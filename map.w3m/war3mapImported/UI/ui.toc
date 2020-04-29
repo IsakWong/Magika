@@ -1,0 +1,4 @@
+war3mapImported/UI/panel.fdf
+war3mapImported/UI/hero-select.fdf
+war3mapImported/UI/main-view.fdf
+war3mapImported/UI/label.fdf

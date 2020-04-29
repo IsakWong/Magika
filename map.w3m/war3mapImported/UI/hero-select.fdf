@@ -1,0 +1,41 @@
+IncludeFile "war3mapImported\UI\panel.fdf",
+
+// -- Frames -------------------------------------------------------
+
+Frame "BACKDROP" "HeroSelectView" {
+    UseActiveContext,
+    Frame "BACKDROP" "HeroSelectButtonPanel" INHERITS "BoxedTextBackgroundTemplate" {
+        UseActiveContext,
+        Width 0.15,
+        Height 0.3,
+    }
+
+    Frame "BACKDROP" "HeroSelectDetailPanel" INHERITS "BoxedTextBackgroundTemplate" {
+        UseActiveContext,
+        Width 0.3,
+        Height 0.3,
+        Frame "TEXT" "HeroSelectPanelTitle" {
+            UseActiveContext,
+            DecorateFileNames,
+            SetPoint TOPLEFT, "HeroSelectView", TOPLEFT, 0.005, -0.005, //Positionate "BoxedTextSimpleTitle"'s TOPLEFT to "BoxedText"'s TOPLEFT with an offset
+            SetPoint TOPRIGHT, "HeroSelectView", TOPRIGHT, -0.005, -0.005,
+            FontFlags "FIXEDSIZE",
+            FrameFont "MasterFont", 0.014, "",
+            FontColor 1.0 1.0 1.0 1.0, //Red Green Blue Alpha 0.0 to 1.0
+            FontShadowColor 0.0 0.0 0.0 0.9,
+            FontShadowOffset 0.001 -0.001,
+        }
+ 
+        Frame "TEXT" "HeroSelectPanelContent" {
+            UseActiveContext,
+            DecorateFileNames,
+            SetPoint TOPLEFT, "HeroSelectView", TOPLEFT, 0.005, -0.02,
+            SetPoint BOTTOMRIGHT,  "HeroSelectView", BOTTOMRIGHT, -0.005, 0.005,
+            FontFlags "FIXEDSIZE",
+            FrameFont "MasterFont", 0.012, "",
+            FontColor 1.0 1.0 1.0 1.0,
+            FontShadowColor 0.0 0.0 0.0 0.9,
+            FontShadowOffset 0.001 -0.001,
+        }
+    }
+}

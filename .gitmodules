@@ -1,0 +1,6 @@
+[submodule "src/lib/console"]
+	path = src/lib/console
+	url = https://github.com/warcraft-iii/lib-console.git
+[submodule "src/lib/stdlib"]
+	path = src/lib/stdlib
+	url = https://github.com/warcraft-iii/lib-stdlib.git
