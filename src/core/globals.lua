@@ -5,7 +5,6 @@ require('lib.init')
 ---@type GlobalTriggers
 _Triggers = {}
 
-_Triggers.SpellEffectTrigger = Trigger:create()
 _Triggers.AnyUnitEnterTrig = Trigger:create()
 _Triggers.TaskAcceptTrigger = Trigger:create()
 _Triggers.ChoseFaithTrigger = Trigger:create()

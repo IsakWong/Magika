@@ -2,14 +2,10 @@ require('lib.init')
 
 require('core.utils')
 
-_WeaponType = require('lib.stdlib.enum.weapontype')
-
----@type AbilityType[]
-_AbilityTypes = {}
-
 ---@class AbilityType : Agent
----@field callback table
----@field onSpellEffect fun():void
+---@field onSpellEffect fun(event:AbilityEvent):void
+---
+---
 ---@type AbilityType
 local AbilityType = class('AbilityBase',require('lib.stdlib.oop.agent'))
 
@@ -17,57 +13,53 @@ local AbilityType = class('AbilityBase',require('lib.stdlib.oop.agent'))
 function AbilityType:create(typeName)
     ---@type AbilityType
     local obj = AbilityType:fromUd(FourCC(typeName))
-    _AbilityTypes[typeName] = obj
     return obj
-end
-
----@param func function
----@param event UnitEvent
-function AbilityType:addEvent(func,event)
-    if self.callback == nil then
-        self.callback = {}
-    end
-    self.callback[event] = func
-    --回调
 end
 
 function AbilityType:spellEffect(id)
     local name = ToStr(id)
     print("技能释放效果" .. name)
-    self.onSpellEffect()
+    self.onSpellEffect(self:prepareEvent())
 end
 
-function AbilityType:dispatchEvent(id,event)
-    local name = ToStr(id)
-    local abilityType = _AbilityTypes[name]
-    if abilityType == nil then
-        return
+---@class AbilityEvent
+---@field owningPlayer Player
+---@field triggerUnit UnitBase
+---@field triggerX number
+---@field triggerY number
+---@field spellTargetX number
+---@field spellTargetY number
+---@field spellTarget UnitBase
+---@field spellRad number
+---
+---@retun AbilityEvent
+function AbilityType:prepareEvent()
+    ---@type AbilityEvent
+    local event = {}
+    ---@type UnitBase
+    local triggerUnit = UnitBase:fromUd(getUd(Event:getTriggerUnit()))
+    event.triggerUnit = triggerUnit
+    local sepllX = 0
+    local sepllY = 0 
+    local triggerX = triggerUnit:getX()
+    local triggerY = triggerUnit:getY()    
+    event.spellTarget = UnitBase:fromUd(getUd(Event:getSpellTargetUnit()))
+    if event.spellTarget == nil then
+        sepllX = Event:getSpellTargetX()
+        sepllY =  Event:getSpellTargetY()
+      
+    else
+        sepllX  = event.spellTarget:getX()
+        sepllY = event.spellTarget:getY()
     end
-    if(event == UnitEvent.SpellEffect) then
-        abilityType:spellEffect(id)
-    end
-    
-    -- local callback = ability.callback[event]
-    -- if callback then
-    --     callback();
-    -- end
+    event.spellRad = math.atan(sepllY - triggerY,sepllX - triggerX)
+    event.spellTargetX = sepllX
+    event.spellTargetY = sepllY
+    event.triggerX = triggerX
+    event.triggerY = triggerY
+
+    return event
 end
-
-_Triggers.SpellEffectTrigger:addCondition(function()
-
-    for k,v in pairs(_AbilityTypes) do
-        print(v)
-        if Event:getSpellAbilityId() == v:getUd() then
-            return true
-        end
-    end
-end)
-
-_Triggers.SpellEffectTrigger:addAction(function()
-    AbilityType:dispatchEvent(Event:getSpellAbilityId(),UnitEvent.SpellEffect)
-end)
-
-
 
 function AbilityType:angleBetween(x1,y1,x2,y2)
     local deltaX = x2 - x1;

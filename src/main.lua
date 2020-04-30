@@ -4,13 +4,13 @@
 --require('ui/ui_manager')
 --require('player')
 
-require('core.init')
+require('core.MkCore')
+
 local UnitBase = require('core.hero.hero_base')
 require('biz.ability.ability1')
 require('biz.ability.ability2')
 require('biz.hero')
 
-local PhysicsSystem = require("core.physics")
 
 
 function EnumUnitInMap()
@@ -44,12 +44,13 @@ _Triggers.AnyUnitEnterTrig:addAction(function()
 end)
 
 
-function onMapInit()
-    print("Init")
-    PhysicsSystem:new():init()
+function mainEntry()
+    MKCore:boot()
+    
+
     UnitBase:createUnit(_Wizzard,Player:get(0))
     print(Native.BlzLoadTOCFile([[war3mapimported\UI\ui.toc]]))    
 end
 
 
-onMapInit()
+mainEntry()

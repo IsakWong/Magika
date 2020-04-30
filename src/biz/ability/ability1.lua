@@ -5,18 +5,28 @@ local AbilityType = require("core.ability.ability_type")
 ---@type AbilityType
 local abilityType1 = AbilityType:create('A000')
 
+local AbilityBarrageType = MKCore.UnitSys:registerUnitType('e002')
 
-abilityType1.onSpellEffect = function ()
-    local x = Event:getTriggerUnit():getX()
-    local y = Event:getTriggerUnit():getY()
-    local player = Event:getTriggerUnit():getOwner()
-    local triggerUnit = Event:getTriggerUnit()
+AbilityBarrageType.onBlockOther =  function()
+    
+end
 
-    local targetX = Event:getSpellTargetX()
-    local targetY = Event:getSpellTargetY()
+AbilityBarrageType.onOverlapOther =  function()
+    
+end
 
-    local angle = AbilityType:getSpellLocationAngle()
-    local unit = Unit:create(Event:getTriggerPlayer(),ToID('e002'),x,y,angle)
+abilityType1.onSpellEffect = function (event)
+    local x = event.triggerX
+    local y = event.triggerY
+    local triggerUnit = event.triggerUnit
+    local player = triggerUnit:getOwner()
+
+    local targetX = event.spellTargetX
+    local targetY = event.s
+
+    local angle = math.deg(event.spellRad)
+
+    local unit = MKCore.UnitSys:createUnit(AbilityBarrageType,player,x,y,angle)
     local timer = Timer:create()
     local moveTimer = Timer:create()
 
