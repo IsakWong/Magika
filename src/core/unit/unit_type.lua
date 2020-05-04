@@ -1,24 +1,27 @@
-require('lib.init')
+local PhysicsState = require('core.physics.physics_state')
 
-
----@class UnitType
----@field onBlockOther fun():void
----@field onOverlapOther fun():void
+---@class UnitBaseType
+---@field defaultPhysics PhysicsState
+---@field canSelect boolean
+---@field onBlockOther fun(unit:UnitBase,other:UnitBase):void
+---@field onOverlapOther fun(unit:UnitBase,other:UnitBase):void
 ---
----@type UnitType
-local UnitType = class('UnitBase',Agent)
+---@type UnitBaseType
+local UnitBaseType = class('UnitBaseType',Agent)
 
-function UnitType:create(typeName)
-    local type = UnitType:fromUd(FourCC(typeName))
+function UnitBaseType:create(typeName)
+    local type = UnitBaseType:fromUd(FourCC(typeName))
+    type.defaultPhysics = PhysicsState:new()
+    type.canSelect = true
     return type
 end
 
-UnitType.onBlockOther = function()
+UnitBaseType.onBlockOther = function(unit,other)
     
 end
 
-UnitType.onOverlapOther = function()
+UnitBaseType.onOverlapOther = function(unit,other)
     
 end
 
-return UnitType
+return UnitBaseType

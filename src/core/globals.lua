@@ -1,4 +1,3 @@
-require('lib.init')
 
 ---@class GlobalTriggers
 
@@ -27,7 +26,3 @@ _UI.MinimapUI = Frame:getOrigin(OriginFrameType.Minimap,0)
 _UI.WorldFrame = Frame:getOrigin(OriginFrameType.WorldFrame,0)
 _UI.HeroButton = Frame:getOrigin(OriginFrameType.HeroButton,0)
 
-__UserPlayers = Force:create()
-__UserPlayers:enumPlayers(function(player)
-    return player:getController() == MapControl.User
-end)

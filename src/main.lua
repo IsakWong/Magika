@@ -3,28 +3,18 @@
 --require('ability/ability_base')
 --require('ui/ui_manager')
 --require('player')
+require('lib.init')
+require('core.MKCore')
 
-require('core.MkCore')
+print("booting...")
+MKCore:boot()
+print("boot finish...")
 
-local UnitBase = require('core.hero.hero_base')
+require('biz.hero.hero')
 require('biz.ability.ability1')
 require('biz.ability.ability2')
-require('biz.hero')
-
-
-
-function EnumUnitInMap()
-    local _existsUnitGroup = Group:create()
-    _existsUnitGroup:enumUnitsInRect(__MapRect,
-    function() 
-        return true 
-    end)
-    local _units = _existsUnitGroup:getUnits()
-    for i = 1,#_units do
-        local unit = _units[i]
-        onUnitEnterMap(unit)        
-    end
-end
+require('biz.ability.ability3')
+require('biz.ability.ability4')
 
 -- function UnitBase:onEnterMap()
             
@@ -39,18 +29,13 @@ end
 --     self.firstEnter = true
 -- end
 
-_Triggers.AnyUnitEnterTrig:addAction(function()
-    PhysicsSystem.instance.unitGroup:addUnit(Event:getEnteringUnit())
+local main  = MKCore.UnitSys:createUnit(MainHero,Player:get(0),Native.GetRectCenterX(gg_rct_RebornRect),Native.GetRectCenterY(gg_rct_RebornRect),0)
+
+print(Native.BlzLoadTOCFile([[war3mapimported\UI\ui.toc]]))    
+
+
+Timer:create():start(2,function()
+    ---@type UnitBase
+    local unit =  UnitBase:fromUd(udg_enemy)    
+    --unit:issuePointOrder(Order.curse,main:getX(),main:getY())
 end)
-
-
-function mainEntry()
-    MKCore:boot()
-    
-
-    UnitBase:createUnit(_Wizzard,Player:get(0))
-    print(Native.BlzLoadTOCFile([[war3mapimported\UI\ui.toc]]))    
-end
-
-
-mainEntry()

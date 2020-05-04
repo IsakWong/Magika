@@ -1,8 +1,6 @@
-require('lib.init')
-
 ---@class UnitBase : Unit
----@field heroType HeroType
----@field faithType FaithType
+---@field physicsState PhysicsState
+---@field unitType UnitBaseType
 ---@field owner Player
 ---
 ---
@@ -10,3 +8,7 @@ require('lib.init')
 UnitBase = class('UnitBase',Unit)
 
 
+function UnitBase:addForce(x,y,z)
+    self.physicsState.forceX = self.physicsState.forceX + x
+    self.physicsState.forceY = self.physicsState.forceY + y
+end

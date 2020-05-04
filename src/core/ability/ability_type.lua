@@ -1,9 +1,10 @@
-require('lib.init')
 
 require('core.utils')
 
 ---@class AbilityType : Agent
+---@field castAnim string
 ---@field onSpellEffect fun(event:AbilityEvent):void
+---@field onSpellCast fun(event:AbilityEvent):void
 ---
 ---
 ---@type AbilityType
@@ -19,7 +20,19 @@ end
 function AbilityType:spellEffect(id)
     local name = ToStr(id)
     print("技能释放效果" .. name)
-    self.onSpellEffect(self:prepareEvent())
+    if self.onSpellEffect ~= nil then
+        self.onSpellEffect(self:prepareEvent())
+    end
+end
+
+function AbilityType:spellCast(id)
+    local name = ToStr(id)
+    print("技能释放效果" .. name)
+    local event = self:prepareEvent()
+    if self.onSpellCast ~= nil then
+        self.onSpellCast(event)
+    end
+    
 end
 
 ---@class AbilityEvent
@@ -57,6 +70,7 @@ function AbilityType:prepareEvent()
     event.spellTargetY = sepllY
     event.triggerX = triggerX
     event.triggerY = triggerY
+    event.owningPlayer = triggerUnit:getOwner()
 
     return event
 end

@@ -1,4 +1,3 @@
-require('lib.init')
 
 ---@class UIElement : Frame
 ---@field context  number

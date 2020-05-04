@@ -1,4 +1,3 @@
-require('lib.init')
 require('core.ui.ui_element')
 
 ---@class UIPanel : UIElement

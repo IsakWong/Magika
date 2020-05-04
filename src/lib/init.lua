@@ -1,0 +1,6 @@
+Native = require('lib.stdlib.native.init')
+require('lib.stdlib.base.init')
+require('lib.stdlib.oop.init')
+require('lib.stdlib.enum.init')
+Message = require('lib.stdlib.utils.message')
+require('lib.console.init')

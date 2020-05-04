@@ -1,4 +1,3 @@
-require('lib.init')
 
 ---@class UIManager
 ---@field views UIPanel[]

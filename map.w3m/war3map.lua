@@ -164,103 +164,382 @@ end
     })
 end
 
-P['biz/ability/ability1.lua'] = [[require("core.init")
-local AbilityType = require("core.ability.ability_type")
+P['biz/ability/ability1.lua'] = [[local AbilityType = require("core.ability.ability_type")
+
+
+local AbilityBarrageType = MKCore.UnitSys:registerUnitType('e002')
+
+AbilityBarrageType.defaultPhysics.phyType = PhysicsType.Dynamic
+AbilityBarrageType.canSelect = false
+
+AbilityBarrageType.onBlockOther =  function(unit,other)
+    unit:kill()
+    unit:damageUnitSimple(other,5)
+    if other.physicsState.phyType == PhysicsType.Dynamic then
+        local x = math.cos(math.rad(unit:getFacing())) * 300
+        local y = math.sin(math.rad(unit:getFacing())) * 300
+        other:addForce(x,y,0)
+    end
+    
+end
+
+AbilityBarrageType.onOverlapOther =  function()
+    
+end
 
 
 ---@type AbilityType
-local abilityType1 = AbilityType:create('A000')
+local abilityType1 = MKCore.AbilitySys:registerAbility('A000','attack spell')
 
+abilityType1.onSpellEffect = function(event)
+    local x = event.triggerX
+    local y = event.triggerY
+    local triggerUnit = event.triggerUnit
+    local player = triggerUnit:getOwner()
 
-abilityType1.onSpellEffect = function ()
-    local x = Event:getTriggerUnit():getX()
-    local y = Event:getTriggerUnit():getY()
-    local player = Event:getTriggerUnit():getOwner()
-    local triggerUnit = Event:getTriggerUnit()
+    local targetX = event.spellTargetX
+    local targetY = event.spellTargetY
 
-    local targetX = Event:getSpellTargetX()
-    local targetY = Event:getSpellTargetY()
+    local angle = math.deg(event.spellRad)
 
-    local angle = AbilityType:getSpellLocationAngle()
-    local unit = Unit:create(Event:getTriggerPlayer(),ToID('e002'),x,y,angle)
-    local timer = Timer:create()
-    local moveTimer = Timer:create()
-
-    local distance = 1500
-    local moveDistance = 0.0
-    local speed = 1000;
-    local height = unit:getFlyHeight()
-    local g = Group:create()
-
-    moveTimer:start(0.03,function()
-        local x = unit:getX()
-        local y = unit:getY()
-        local newX = x + speed * 0.03 * math.cos(math.rad(angle))
-        local newY = y + speed * 0.03 * math.sin(math.rad(angle))
-        --unit:setFlyHeight(height * (distance - moveDistance) / distance ,9999)
-        unit:setX(newX)
-        unit:setY(newY)
-        g:enumEnemyUnits(player,x,y,100)
-        g:forEachOnce(
-            function(enemy)
-            unit:damageUnitSimple(enemy,100)
-            moveTimer:delete()
-            unit:kill()
-            local rad = math.rad(unit:getFacing())            
-            enemy:addForce(1000*math.cos(rad),1000*math.sin(rad),0)
-        end)
-        moveDistance = moveDistance + speed * 0.03
-        if moveDistance > distance then
-            moveTimer:delete()
+    local unit = MKCore.UnitSys:createUnit(AbilityBarrageType,player,x,y,angle)
+    local speed = 900
+    unit.physicsState.forceX = math.cos(event.spellRad) * speed
+    unit.physicsState.forceY = math.sin(event.spellRad) * speed
+    Timer:after(1.4,function()
+        if unit:isAlive() then
             unit:kill()
         end
+        
     end)
 end]]
 
-P['biz/ability/ability2.lua'] = [[require("core.init")
-local AbilityType = require("core.ability.ability_type")
+P['biz/ability/ability2.lua'] = [[local AbilityType = require("core.ability.ability_type")
 
 
----@type AbilityType
-local abilityType2 = AbilityType:create('A002')
+local Portal = MKCore.UnitSys:registerUnitType('e004')
+
+Portal.defaultPhysics.phyType = PhysicsType.None
+Portal.canSelect = false
+
+local abilityType2 = MKCore.AbilitySys:registerAbility('A002')
 
 
-abilityType2.onSpellEffect = function()
-    local x = Event:getTriggerUnit():getX()
-    local y = Event:getTriggerUnit():getY()
-    local player = Event:getTriggerUnit():getOwner()
-    local targetX = Event:getSpellTargetX()
-    local targetY = Event:getSpellTargetY()
+abilityType2.onSpellEffect = function(event)
 
-    local angle = AbilityType:getSpellLocationAngle()
-    for i = 0,4 do
-        local unit = Unit:create(Event:getTriggerPlayer(),ToID('e001'),targetX,targetY,0)
-        unit:setFlyHeight(250 * i,9999)
-        unit:setLife(2)
-    end
+    local x = event.triggerX
+    local y = event.triggerY
+    local unit = event.triggerUnit
+    local facing = math.rad(unit:getFacing())
+    local x1 = event.triggerX + math.cos(facing) * 200
+    local y1 = event.triggerY + math.sin(facing) * 200
+    local x2 = event.triggerX + math.cos(facing) * 800
+    local y2 = event.triggerY + math.sin(facing) * 800
 
-    Effect:addSpecial('Objects\\Spawnmodels\\Human\\HCancelDeath\\HCancelDeath.mdl',targetX,targetY)
+    local portal1 = MKCore.UnitSys:createUnit(Portal,event.owningPlayer,x1,y1,math.deg(facing))
+    portal1:setLife(1.0)
+    
+    portal1:setAnimation('birth')
+    portal1:setTimeScale(20)
+    local portal2 = MKCore.UnitSys:createUnit(Portal,event.owningPlayer,x2,y2,math.deg(facing))
+    portal2:setAnimation('birth')
+    portal2:setTimeScale(20)
+
+    Timer:after(1.0,function()
+        portal1:kill()
+        portal2:kill()
+    end)
+
+    unit:setAnimation('Spell')
+    local timer = Timer:create()
+    local timer2 = Timer:create()
+    local speed = 500
+    timer:start(0.03,function()
+        local rad = math.atan(y1 - unit:getY(),x1 - unit:getX())
+        local x0 = unit:getX() + math.cos(rad) * 500 * 0.03
+        local y0 = unit:getY() + math.sin(rad) * 500 * 0.03
+        local dx =  x0 - x1
+        local dy = y0 - y1
+        local dis = math.sqrt(dx * dx + dy * dy)
+        speed = math.smoothDamp(dis,200,speed,0.1,1000,0.03)
+        if dis < 10 then
+            timer:delete()
+            unit:setX(x2)
+            unit:setY(y2)
+            unit:addForce(500*math.cos(facing),500*math.sin(facing),0)
+            Effect:addSpecial('Abilities\\Spells\\NightElf\\Blink\\BlinkCaster.mdl',x1,y1):delete()
+            Effect:addSpecial('Abilities\\Spells\\NightElf\\Blink\\BlinkCaster.mdl',x2,y2):delete()
+            
+            unit:setPaused(true)
+            Timer:after(0.1,function()
+                unit:setPaused(false)
+            end)
+            timer:destroy()
+        else
+            unit:setX(x0)
+            unit:setY(y0)
+        end      
+    end)
+    
 end]]
 
-P['biz/hero.lua'] = [[require('core.init')
+P['biz/ability/ability3.lua'] = [[local AbilityType = require("core.ability.ability_type")
 
-local HeroType = require("core.hero.hero_type")
 
-_Wizzard = HeroType:create('H002')
-_Wizzard.name = "巫师"]]
+local Missile = MKCore.UnitSys:registerUnitType('e005')
 
-P['core/ability/ability_type.lua'] = [[require('lib.init')
+local Explosion = MKCore.UnitSys:registerUnitType('e006')
 
+
+Missile.defaultPhysics.phyType = PhysicsType.Dynamic
+Missile.defaultPhysics.dampX = 900
+Missile.defaultPhysics.dampY = 900
+Missile.canSelect = false
+Missile.defaultPhysics.radius = 100
+
+Explosion.defaultPhysics.phyType = PhysicsType.None
+Explosion.canSelect = false
+
+Missile.onBlockOther = function(unit,other)
+    if(unit:isEnemy(other:getOwner())) then
+        local rad = math.rad(unit:getFacing())
+        unit:kill()
+        other:addForce(math.cos(rad) * 400,math.sin(rad) * 400,0)
+        local explosion = MKCore.UnitSys:createUnit(Explosion,unit:getOwner(),unit:getX(),unit:getY(),0)
+        Timer:after(1,function()
+            explosion:kill()
+        end)
+    end
+end
+
+local abilityType2 = MKCore.AbilitySys:registerAbility('A006')
+
+
+abilityType2.onSpellEffect = function(event)
+
+    for i = 0,5 do
+        local deg = math.rad(60 * i)
+        local missile = MKCore.UnitSys:createUnit(Missile,event.owningPlayer,event.triggerX,event.triggerY,0)
+        missile:addForce(math.cos(deg) * 600, math.sin(deg) * 600,0)
+        Timer:after(1.5,function()
+            if missile:isAlive() then
+                local explosion = MKCore.UnitSys:createUnit(Explosion,event.owningPlayer,missile:getX(),missile:getY(),0)
+                Timer:after(1,function()
+                    explosion:kill()
+                end)
+
+                missile:kill()            
+            end
+            
+        end)
+
+    end  
+    
+end]]
+
+P['biz/ability/ability4.lua'] = [[local AbilityType = require("core.ability.ability_type")
+
+
+
+local abilityType2 = MKCore.AbilitySys:registerAbility('A007')
+
+
+abilityType2.onSpellEffect = function(event)
+
+    local group = Group:create()
+    group:enumEnemyUnits(event.owningPlayer,event.spellTargetX,event.spellTargetY,150)
+    ---@type UnitBase
+    local select = nil
+    
+    group:forEach(function(unit)
+        if select == nil then
+            select = unit
+            event.triggerUnit.selectObject = select
+            select.throwing = false
+        end        
+    end)
+    local t = Timer:create()
+    local t2 = Timer:create()
+    local height = 0
+    t:start(0.03,function()
+        if select:getFlyHeight() > 300 or select.throwing == true then
+            t:delete()
+            height = 300
+            t2:start(0.03,function()
+                if select:getFlyHeight() < 10 then 
+                    t2:delete()
+                    select:setFlyHeight(0,9999)
+                else
+                    select:setFlyHeight(height,9999)
+                    height = height - 500 * 0.03
+                end
+            end)
+        else
+            select:addAbility(FourCC('Arav'))
+            select:setFlyHeight(height,9999)
+            select:removeAbility(FourCC('Arav'))
+            height = height + 500 * 0.03
+            print(height)
+
+        end        
+    end)
+
+    
+end]]
+
+P['biz/doodads/tree.lua'] = [[local tree1 = MKCore.UnitSys:registerUnitType('e003')
+
+tree1.defaultPhysics.phyType = PhysicsType.Static
+tree1.canSelect = false
+tree1.defaultPhysics.radius = 100
+tree1.onBlockOther = function(unit,other)
+
+end
+
+tree1.onOverlapOther = function(unit,other)
+
+end
+
+
+
+local rock = MKCore.UnitSys:registerUnitType('e007')
+
+rock.defaultPhysics.phyType = PhysicsType.Dynamic
+rock.canSelect = false
+rock.defaultPhysics.radius = 75
+rock.onBlockOther = function(unit,other)
+
+end
+
+rock.onOverlapOther = function(unit,other)
+
+end]]
+
+P['biz/hero/hero.lua'] = [[
+
+_G.MainHero = MKCore.UnitSys:registerUnitType('H002')
+MainHero.defaultPhysics.phyType = PhysicsType.Dynamic
+MainHero.defaultPhysics.dampX = 500
+MainHero.defaultPhysics.dampY = 500]]
+
+P['core/MKCore.lua'] = [[local PhysicsSystem = require('core.physics.physics_system')
+local AbilitySystem = require('core.ability.ability_system')
+local UnitSystem = require('core.unit.unit_system')
+
+require('core.unit.unit_base')
+require('core.unit.unit_ext')
+
+---@class MKCore
+---@field UserPlayers Force
+---@field MapRect Rect
+---@field PhySys PhysicsSystem
+---@field AbilitySys AbilitySystem
+---
+
+---@type MKCore
+---
+MKCore = {}
+_G.MKCore = MKCore
+
+function MKCore:boot()
+    self.MapRect = Rect:fromUd(GetEntireMapRect())
+    self.UserPlayers = Force:create()
+    self.UserPlayers:enumPlayers(function(player)
+        return player:getController() == MapControl.User
+    end)
+    self.UnitSys = UnitSystem:new()
+    self.AbilitySys = AbilitySystem:new()
+    self.PhySys = PhysicsSystem:new()
+    require('biz.doodads.tree')
+    require('biz.hero.hero')
+    self.UnitSys:init()
+    self.AbilitySys:init()    
+    self.PhySys:init()
+end]]
+
+P['core/ability/ability_system.lua'] = [[local AbilityType = require("core.ability.ability_type")
+
+---@class AbilitySystem
+---@field abilityTypes AbilityType[]
+---@field spellEffectTrigger Trigger
+---@field spellCastTrigger Trigger
+---@type AbilitySystem
+local AbilitySystem = class("AbilitySystem")
+
+function AbilitySystem:constructor()
+    self.spellEffectTrigger = Trigger:create()
+    self.spellCastTrigger = Trigger:create()
+    self.abilityTypes = {}
+
+end
+
+function AbilitySystem:init()
+    
+    self.spellEffectTrigger:addCondition(function()
+        for k,v in pairs(self.abilityTypes) do
+            if Event:getSpellAbilityId() == v:getUd() then
+                return true
+            end
+        end
+    self.spellCastTrigger:addCondition(function()
+        for k,v in pairs(self.abilityTypes) do
+            if Event:getSpellAbilityId() == v:getUd() then
+                return true
+            end
+        end
+    end)    
+    end)    
+    self.spellEffectTrigger:addAction(function()
+        self:dispatchEvent(Event:getSpellAbilityId(),UnitEvent.SpellEffect)
+    end)
+    self.spellCastTrigger:addAction(function()
+        self:dispatchEvent(Event:getSpellAbilityId(),UnitEvent.SpellChannel)
+    end)
+end
+
+function AbilitySystem:registerAbility(typeName)
+    local obj = AbilityType:create(typeName)
+    self.abilityTypes[typeName] = obj
+    return obj
+end
+
+function AbilitySystem:registerUnit(unit)
+    self.spellEffectTrigger:registerUnitEvent(unit,UnitEvent.SpellEffect)
+    self.spellCastTrigger:registerUnitEvent(unit,UnitEvent.SpellChannel)
+end
+
+function AbilitySystem:dispatchEvent(id,event)
+    local name = ToStr(id)
+    
+    local abilityType = self.abilityTypes[name]
+    if abilityType == nil then
+        return
+    end
+    if(event == UnitEvent.SpellEffect) then
+        print("SpellEffect"..name)
+        abilityType:spellEffect(id)
+        return
+    end
+    if(event == UnitEvent.SpellChannel) then
+        
+        print("SpellCast"..name)
+        abilityType:spellCast(id)
+        return
+    end
+    
+end
+
+return AbilitySystem]]
+
+P['core/ability/ability_type.lua'] = [[
 require('core.utils')
 
-_WeaponType = require('lib.stdlib.enum.weapontype')
-
----@type AbilityType[]
-_AbilityTypes = {}
-
 ---@class AbilityType : Agent
----@field callback table
----@field onSpellEffect fun():void
+---@field castAnim string
+---@field onSpellEffect fun(event:AbilityEvent):void
+---@field onSpellCast fun(event:AbilityEvent):void
+---
+---
 ---@type AbilityType
 local AbilityType = class('AbilityBase',require('lib.stdlib.oop.agent'))
 
@@ -268,57 +547,66 @@ local AbilityType = class('AbilityBase',require('lib.stdlib.oop.agent'))
 function AbilityType:create(typeName)
     ---@type AbilityType
     local obj = AbilityType:fromUd(FourCC(typeName))
-    _AbilityTypes[typeName] = obj
     return obj
-end
-
----@param func function
----@param event UnitEvent
-function AbilityType:addEvent(func,event)
-    if self.callback == nil then
-        self.callback = {}
-    end
-    self.callback[event] = func
-    --回调
 end
 
 function AbilityType:spellEffect(id)
     local name = ToStr(id)
     print("技能释放效果" .. name)
-    self.onSpellEffect()
+    if self.onSpellEffect ~= nil then
+        self.onSpellEffect(self:prepareEvent())
+    end
 end
 
-function AbilityType:dispatchEvent(id,event)
+function AbilityType:spellCast(id)
     local name = ToStr(id)
-    local abilityType = _AbilityTypes[name]
-    if abilityType == nil then
-        return
-    end
-    if(event == UnitEvent.SpellEffect) then
-        abilityType:spellEffect(id)
+    print("技能释放效果" .. name)
+    local event = self:prepareEvent()
+    if self.onSpellCast ~= nil then
+        self.onSpellCast(event)
     end
     
-    -- local callback = ability.callback[event]
-    -- if callback then
-    --     callback();
-    -- end
 end
 
-_Triggers.SpellEffectTrigger:addCondition(function()
-
-    for k,v in pairs(_AbilityTypes) do
-        print(v)
-        if Event:getSpellAbilityId() == v:getUd() then
-            return true
-        end
+---@class AbilityEvent
+---@field owningPlayer Player
+---@field triggerUnit UnitBase
+---@field triggerX number
+---@field triggerY number
+---@field spellTargetX number
+---@field spellTargetY number
+---@field spellTarget UnitBase
+---@field spellRad number
+---
+---@retun AbilityEvent
+function AbilityType:prepareEvent()
+    ---@type AbilityEvent
+    local event = {}
+    ---@type UnitBase
+    local triggerUnit = UnitBase:fromUd(getUd(Event:getTriggerUnit()))
+    event.triggerUnit = triggerUnit
+    local sepllX = 0
+    local sepllY = 0 
+    local triggerX = triggerUnit:getX()
+    local triggerY = triggerUnit:getY()    
+    event.spellTarget = UnitBase:fromUd(getUd(Event:getSpellTargetUnit()))
+    if event.spellTarget == nil then
+        sepllX = Event:getSpellTargetX()
+        sepllY =  Event:getSpellTargetY()
+      
+    else
+        sepllX  = event.spellTarget:getX()
+        sepllY = event.spellTarget:getY()
     end
-end)
+    event.spellRad = math.atan(sepllY - triggerY,sepllX - triggerX)
+    event.spellTargetX = sepllX
+    event.spellTargetY = sepllY
+    event.triggerX = triggerX
+    event.triggerY = triggerY
+    event.owningPlayer = triggerUnit:getOwner()
 
-_Triggers.SpellEffectTrigger:addAction(function()
-    AbilityType:dispatchEvent(Event:getSpellAbilityId(),UnitEvent.SpellEffect)
-end)
-
-
+    return event
+end
 
 function AbilityType:angleBetween(x1,y1,x2,y2)
     local deltaX = x2 - x1;
@@ -364,14 +652,12 @@ end
 
 return AbilityType]]
 
-P['core/globals.lua'] = [[require('lib.init')
-
+P['core/globals.lua'] = [[
 ---@class GlobalTriggers
 
 ---@type GlobalTriggers
 _Triggers = {}
 
-_Triggers.SpellEffectTrigger = Trigger:create()
 _Triggers.AnyUnitEnterTrig = Trigger:create()
 _Triggers.TaskAcceptTrigger = Trigger:create()
 _Triggers.ChoseFaithTrigger = Trigger:create()
@@ -392,76 +678,56 @@ _UI = {}
 _UI.GameUI = Frame:getOrigin(OriginFrameType.GameUi,0)
 _UI.MinimapUI = Frame:getOrigin(OriginFrameType.Minimap,0)
 _UI.WorldFrame = Frame:getOrigin(OriginFrameType.WorldFrame,0)
-_UI.HeroButton = Frame:getOrigin(OriginFrameType.HeroButton,0)
+_UI.HeroButton = Frame:getOrigin(OriginFrameType.HeroButton,0)]]
 
-__UserPlayers = Force:create()
-__UserPlayers:enumPlayers(function(player)
-    return player:getController() == MapControl.User
-end)]]
+P['core/physics/physics_state.lua'] = [[---@class PhysicsState
+---@field phyType PhysicsType
+---@field colType CollisionType
+---@field forceX number
+---@field forceY number
+---@field forceZ number
+---@field dampX number
+---@field dampY number
+---@field dampZ number
+---@field radius number
+---@type PhysicsState
+local PhysicsState = class("PhysicsState")
 
-P['core/hero/hero_base.lua'] = [[require('lib.init')
 
----@class UnitBase : Unit
----@field heroType HeroType
----@field faithType FaithType
----@field owner Player
----
----
----@type UnitBase
-local UnitBase = class('UnitBase',Unit)
-
-_HeroEnterMapTrigger = Trigger:create()
-
-function UnitBase:constructor(ud)
-
+function PhysicsState:constructor()
+    self.phyType = PhysicsType.None
+    self.colType = CollisionType.Block
+    self.forceX = 0
+    self.forceY = 0
+    self.forceZ = 0
+    self.dampX = 0
+    self.dampY = 0
+    self.dampZ = 0
+    self.radius = 50
 end
+---@class PhysicsType
+---@type PhysicsType
+PhysicsType = {}
+PhysicsType.None = 0 -- 无物理效果
+PhysicsType.Static = 1 -- 静态无位移
+PhysicsType.Dynamic = 2 -- 动态物理效果
 
----@param player Player
----@param type HeroType
-function UnitBase:createUnit(type,player)
-    local rect = Rect:fromUd(gg_rct_RebornRect)    
-    local hero = UnitBase:fromUd(Native.CreateUnit(getUd(player), type.id, rect:getCenterX(), rect:getCenterY(), 0))
-    _Triggers.SpellEffectTrigger:registerUnitEvent(hero,UnitEvent.SpellEffect)
-    _Triggers.TaskAcceptTrigger:registerUnitEvent(hero,UnitEvent.PickupItem)
-    _Triggers.ChoseFaithTrigger:registerUnitEvent(hero,UnitEvent.PickupItem)
-    return hero
-end
+---@class CollisionType
+---@type CollisionType
+CollisionType = {}
+CollisionType.None = 0 -- 无碰撞
+CollisionType.Block = 1 -- 阻挡
+CollisionType.Overlap = 2 -- 穿透
 
-return UnitBase]]
+return PhysicsState]]
 
-P['core/hero/hero_type.lua'] = [[require('lib.init')
-
----@class HeroType : Agent
----@field name string
----@field description string
----@field selectCam Handle
----@field id number
-local HeroType = class('HeroType',require('lib.stdlib.oop.agent'))
-
-_HeroTypes = {}
-
-function HeroType:create(typeName)
-    local obj = HeroType:fromUd(FourCC(typeName))
-    obj.id = FourCC(typeName)
-    _HeroTypes[typeName] = obj
-    return obj
-end
-
-return HeroType]]
-
-P['core/init.lua'] = [[require('lib.init')
-
-require('core.globals')
-require('core.utils')
-
-require('core.hero.hero_base')
-require('core.unit_ext')
-require('core.ability.ability_type')]]
-
-P['core/physics.lua'] = [[require("lib.init")
+P['core/physics/physics_system.lua'] = [[local PhysicsState = require('core.physics.physics_state')
 
 ---@class PhysicsSystem
 ---@field instance PhysicsSystem
+---@field tmpGroup Group
+---@field dynamicGroup UnitBase[]
+---@field staticGroup UnitBase[]
 
 ---@type PhysicsSystem
 local PhysicsSystem = class('PhysicsSystem')
@@ -469,76 +735,129 @@ local PhysicsSystem = class('PhysicsSystem')
 ---@type PhysicsSystem
 PhysicsSystem.instance = nil
 
-function PhysicsSystem:init()
+
+function PhysicsSystem:constructor()
     PhysicsSystem.instance = self
     self.mainTimer = Timer:create()
     self.mainTimer:start(0.03,PhysicsSystem.MainLoop)
-    self.unitGroup = Group:create()
+    self.dynamicGroup = {}
+    self.staticGroup = {}
+    self.tmpGroup = Group:create()
+end
+
+function PhysicsSystem:init()
+  
+end
+
+function PhysicsSystem:check()
+    -- body
+end
+
+---@param unit UnitBase
+function PhysicsSystem:registerUnit(unit)
+    local UnitBaseType = require('core.unit.unit_type')
+    ---@type UnitBaseType
+    local unitType = UnitBaseType:fromUd(unit:getTypeId())
+    unit.physicsState = PhysicsState:new() 
+    unit.physicsState.phyType = unitType.defaultPhysics.phyType
+    unit.physicsState.dampX = unitType.defaultPhysics.dampX
+    unit.physicsState.dampY = unitType.defaultPhysics.dampY
+    unit.physicsState.dampZ = unitType.defaultPhysics.dampZ
+    unit.physicsState.radius = unitType.defaultPhysics.radius
+    if unit.physicsState.phyType == PhysicsType.Static then
+        table.insert(self.staticGroup,unit)
+    end
+    if unit.physicsState.phyType == PhysicsType.Dynamic then
+        table.insert(self.dynamicGroup,unit)
+    end
+
+    print(unit:getName() .. " 注册进物理系统")
+ 
 end
 
 function PhysicsSystem.MainLoop()
-    local ins = PhysicsSystem.instance    
-    ins.unitGroup:forEach(PhysicsSystem.UnitLoopCallback)
+    local phy = MKCore.PhySys
+    for i,unit in ipairs(phy.dynamicGroup) do
+        phy:UnitLoopCallback(unit)
+    end
 end
 
----@param unit Unit
-function PhysicsSystem.UnitLoopCallback(unit)
-    if unit.force == nil then
+---@param unit UnitBase
+function PhysicsSystem:UnitLoopCallback(unit)
+    if unit:isDead() then
         return
     end
+    self.tmpGroup:clear()
+    local phyState = unit.physicsState
+    if phyState == nil then
+        return 
+    end
     
-    local force = unit.force
     local x = unit:getX()
     local y = unit:getY()
-    local forecX = force.x
-    local forecY = force.y
-    local ang = math.atan(forecY,forecX)
+    local forecX = phyState.forceX
+    local forecY = phyState.forceY
+    local rad = math.atan(forecY,forecX)
     local speed = forecX * forecX  + forecY * forecY
     speed = math.sqrt(speed)
-    local dX = speed * 0.03 * math.cos(ang)
-    local dY = speed * 0.03 * math.sin(ang)
-    local damp = 600
-    if force.x ~= 0 then
-        unit:setX(x + dX)
+    local dX = speed * 0.03 * math.cos(rad)
+    local dY = speed * 0.03 * math.sin(rad)
+    local dampX = math.abs(phyState.dampX * 0.03 * math.cos(rad))
+    local dampY = math.abs(phyState.dampY * 0.03 * math.sin(rad))
+    local newX = x + dX
+    local newY = y + dY
+    self.tmpGroup:enumEnemyUnits(unit:getOwner(),newX,newY,phyState.radius)
+    
+    local isBlock = false
+    self.tmpGroup:forEach(function(o)
+        local other = UnitBase:fromUd(getUd(o))
+        if unit:isAlive() then
+            unit.unitType.onBlockOther(unit,other)
+            other.unitType.onBlockOther(other,unit)
+        end
+        if unit.physicsState.colType == CollisionType.Block and other.physicsState.colType == CollisionType.Block then
+            isBlock = true
+            print(isBlock)
+        end
+    end)
+    
+    if not isBlock then
+        unit:setX(newX)
+        unit:setY(newY) 
     end
 
-    if force.y ~= 0 then
-        unit:setY(y + dY) 
-    end
-    
-    if force.x > 0 then
-        force.x = force.x - 0.03 * damp
-        if force.x < 0 then
-            force.x = 0
+    if phyState.forceX > 0 then
+        phyState.forceX = phyState.forceX - dampX
+        if phyState.forceX < 0 then
+            phyState.forceX = 0
         end
     end
     
-    if force.x < 0 then
-        force.x = force.x + 0.03 * damp
-        if force.x > 0 then
-            force.x = 0
+    if phyState.forceX < 0 then
+        phyState.forceX = phyState.forceX + dampX
+        if phyState.forceX > 0 then
+            phyState.forceX = 0
         end
     end
    
-    if force.y > 0 then
-        force.y= force.y - 0.03 * damp
-        if force.y < 0 then
-            force.y = 0
+    if phyState.forceY > 0 then
+        phyState.forceY= phyState.forceY - dampY
+        if phyState.forceY < 0 then
+            phyState.forceY = 0
         end
     end
     
-    if force.y < 0 then
-        force.y = force.y + 0.03 * damp
-        if force.y > 0 then
-            force.y = 0
+    if phyState.forceY < 0 then
+        phyState.forceY = phyState.forceY + dampY
+        if phyState.forceY > 0 then
+            phyState.forceY = 0
         end
     end
 end
 
 return PhysicsSystem]]
 
-P['core/ui/button.lua'] = [[require('lib.init')
-require('core.ui.ui_element')
+P['core/ui/button.lua'] = [[require('core.ui.ui_element')
 
 ---@class UIButton : UIElement
 UIButton = class('UIButton',UIElement)
@@ -568,8 +887,7 @@ end
 
 return UIButton]]
 
-P['core/ui/label.lua'] = [[require('lib.init')
-require('core.ui.ui_element')
+P['core/ui/label.lua'] = [[require('core.ui.ui_element')
 
 ---@class UILabel : Frame
 ---@field button  Frame
@@ -591,8 +909,7 @@ end
 
 return UILabel]]
 
-P['core/ui/panel.lua'] = [[require('lib.init')
-require('core.ui.ui_element')
+P['core/ui/panel.lua'] = [[require('core.ui.ui_element')
 
 ---@class UIPanel : UIElement
 UIPanel = class('UIPanel',UIElement)
@@ -660,8 +977,7 @@ end
 
 return UIPanel]]
 
-P['core/ui/ui_element.lua'] = [[require('lib.init')
-
+P['core/ui/ui_element.lua'] = [[
 ---@class UIElement : Frame
 ---@field context  number
 UIElement = class("UIElement",Frame)
@@ -691,8 +1007,7 @@ end
 
 return UIElement]]
 
-P['core/ui/ui_manager.lua'] = [[require('lib.init')
-
+P['core/ui/ui_manager.lua'] = [[
 ---@class UIManager
 ---@field views UIPanel[]
 UIManager = class("UIManager")
@@ -749,8 +1064,7 @@ function UIManager:registerClickEvent(callback)
     buttonTrigger:addAction(callback)
 end]]
 
-P['core/ui/view.lua'] = [[require('lib.init')
-require('core.ui.ui_element')
+P['core/ui/view.lua'] = [[require('core.ui.ui_element')
 
 ---@class UIView : UIElement
 UIView = class('UIView',UIElement)
@@ -766,10 +1080,22 @@ end
 
 return UIView]]
 
-P['core/unit_ext.lua'] = [[require('lib.init')
-local PhysicsSystem = require('core.physics')
+P['core/unit/unit_base.lua'] = [[---@class UnitBase : Unit
+---@field physicsState PhysicsState
+---@field unitType UnitBaseType
+---@field owner Player
+---
+---
+---@type UnitBase
+UnitBase = class('UnitBase',Unit)
 
-function Group:enumEnemyUnits(player,x,y,radius)
+
+function UnitBase:addForce(x,y,z)
+    self.physicsState.forceX = self.physicsState.forceX + x
+    self.physicsState.forceY = self.physicsState.forceY + y
+end]]
+
+P['core/unit/unit_ext.lua'] = [[function Group:enumEnemyUnits(player,x,y,radius)
     self:enumUnitsInRange(x,y,radius,function (u)
         if u:isEnemy(player) == false then
             return false;
@@ -786,6 +1112,28 @@ function Group:enumEnemyUnits(player,x,y,radius)
     return self
 end
 
+function math.smoothDamp(current, target, currentVelocity, smoothTime, maxSpeed, deltaTime)
+    smoothTime = math.max(0.0001, smoothTime);
+    local num1 = 2 / smoothTime;
+    local num2 = num1 * deltaTime;
+    local num3 = (1.0 / (1.0 + num2 + 0.479999989271164 * num2 * num2 + 0.234999999403954 * num2 * num2 * num2));
+    local num4 = current - target;
+    local num5 = target;
+    local max = maxSpeed * smoothTime;
+    local num6 = math.clamp(num4, -max, max);
+    target = current - num6;
+    local num7 = (currentVelocity + num1 * num6) * deltaTime;
+    currentVelocity = (currentVelocity - num1 * num7) * num3;
+    local num8 = target + (num6 + num7) * num3;
+    if ( (num5 -  current > 0.0) ==( num8 > num5)) then
+    
+        num8 = num5;
+        currentVelocity = (num8 - num5) / deltaTime;
+    end
+    
+    return num8
+end
+
 function Group:isIn(widget)
     for i = 0 , self:getSize() - 1 do
         if widget == self:unitAt(i) then
@@ -795,19 +1143,6 @@ function Group:isIn(widget)
     return false
 end
 
-function Unit:addForce(x,y,z)
-    if self.force == nil then
-        self.force = {}
-    end
-    if PhysicsSystem.instance.unitGroup:isIn(self) then
-        
-    else
-        PhysicsSystem.instance.unitGroup:addUnit(self)
-    end
-    self.force.x = x
-    self.force.y = y
-    self.force.z = z
-end
 
 function Group:forEachOnce(callback)
     if self.done == nil then
@@ -828,8 +1163,108 @@ function Unit:damageUnitSimple(enemy,val)
     self:damageTarget(enemy, val,false, false, AttackType.Hero, DamageType.Magic, WeaponType.Whoknows)
 end]]
 
-P['core/utils.lua'] = [[require('lib.init')
+P['core/unit/unit_system.lua'] = [[
 
+local UnitBaseType = require('core.unit.unit_type')
+require('core.unit.unit_base')
+require('core.unit.unit_ext')
+
+---@class UnitSystem
+---@field unitTypes UnitBaseType[]
+
+---@type UnitSystem
+local UnitSystem = class("UnitSystem")
+
+
+function UnitSystem:constructor()
+    self.unitTypes = {}
+end
+
+function UnitSystem:init()
+    local tmpGroup = Group:create()
+    tmpGroup:enumUnitsInRect(MKCore.MapRect,
+    function(unit)
+        return true
+    end
+    )
+
+    local UnitBaseType = require('core.unit.unit_type')
+
+    tmpGroup:forEach(function(u)
+        local unit = UnitBase:fromUd(getUd(u))
+        self:registerUnit(unit)     
+    end)
+end
+
+---@return UnitBaseType
+function UnitSystem:registerUnitType(typeName)
+    local id = FourCC(typeName)
+    local key = ToStr(id)
+    local type = UnitBaseType:create(typeName)
+    self.unitTypes[key] = type
+    return type
+end
+
+---@param unit UnitBase
+function UnitSystem:registerUnit(unit)
+    local UnitBaseType = require('core.unit.unit_type')
+    local unitType = UnitBaseType:fromUd(unit:getTypeId())
+    unit.unitType = unitType
+    if unitType.defaultPhysics ~= nil then
+        MKCore.PhySys:registerUnit(unit)
+    end
+    if unitType.canSelect == false then
+        unit:addAbility(FourCC('Aloc'))        
+        unit:setPosition(unit:getX(),unit:getY())
+    end 
+    if unit:isType(UnitType.Hero) then
+        MKCore.AbilitySys:registerUnit(unit)
+    end
+end
+
+---@param unitType UnitType
+---@return UnitBase
+function UnitSystem:createUnit(unitType,player,x,y,angle)
+
+    local rect = Rect:fromUd(gg_rct_RebornRect)    
+    ---@type UnitBase
+    local unit = UnitBase:fromUd(Native.CreateUnit(getUd(player), getUd(unitType), x, y, angle))
+    
+    self:registerUnit(unit)
+    return unit
+end
+
+return UnitSystem]]
+
+P['core/unit/unit_type.lua'] = [[local PhysicsState = require('core.physics.physics_state')
+
+---@class UnitBaseType
+---@field defaultPhysics PhysicsState
+---@field canSelect boolean
+---@field onBlockOther fun(unit:UnitBase,other:UnitBase):void
+---@field onOverlapOther fun(unit:UnitBase,other:UnitBase):void
+---
+---@type UnitBaseType
+local UnitBaseType = class('UnitBaseType',Agent)
+
+function UnitBaseType:create(typeName)
+    local type = UnitBaseType:fromUd(FourCC(typeName))
+    type.defaultPhysics = PhysicsState:new()
+    type.canSelect = true
+    return type
+end
+
+UnitBaseType.onBlockOther = function(unit,other)
+    
+end
+
+UnitBaseType.onOverlapOther = function(unit,other)
+    
+end
+
+return UnitBaseType]]
+
+P['core/utils.lua'] = [[
 function ToStr(id)
     return ('>I4'):pack(id)
 end
@@ -2550,6 +2985,13 @@ local CameraField = {
 }
 return CameraField]]
 
+P['lib/stdlib/enum/commandbuttoneffect.lua'] = [[local Native = require('lib.stdlib.native')
+
+---@class commandbuttoneffect
+local commandbuttoneffect = {
+}
+return commandbuttoneffect]]
+
 P['lib/stdlib/enum/damagetype.lua'] = [[local Native = require('lib.stdlib.native')
 
 ---@class DamageType
@@ -3002,6 +3444,13 @@ local MapVisibility = {
 }
 return MapVisibility]]
 
+P['lib/stdlib/enum/minimapicon.lua'] = [[local Native = require('lib.stdlib.native')
+
+---@class minimapicon
+local minimapicon = {
+}
+return minimapicon]]
+
 P['lib/stdlib/enum/mousebuttontype.lua'] = [[local Native = require('lib.stdlib.native')
 
 ---@class MouseButtonType
@@ -3414,6 +3863,11 @@ local OriginFrameType = {
     TopMsg = Native.ConvertOriginFrameType(15), --ORIGIN_FRAME_TOP_MSG
     Portrait = Native.ConvertOriginFrameType(16), --ORIGIN_FRAME_PORTRAIT
     WorldFrame = Native.ConvertOriginFrameType(17), --ORIGIN_FRAME_WORLD_FRAME
+    SimpleUiParent = Native.ConvertOriginFrameType(18), --ORIGIN_FRAME_SIMPLE_UI_PARENT
+    PortraitHpText = Native.ConvertOriginFrameType(19), --ORIGIN_FRAME_PORTRAIT_HP_TEXT
+    PortraitManaText = Native.ConvertOriginFrameType(20), --ORIGIN_FRAME_PORTRAIT_MANA_TEXT
+    UnitPanelBuffBar = Native.ConvertOriginFrameType(21), --ORIGIN_FRAME_UNIT_PANEL_BUFF_BAR
+    UnitPanelBuffBarLabel = Native.ConvertOriginFrameType(22), --ORIGIN_FRAME_UNIT_PANEL_BUFF_BAR_LABEL
 }
 return OriginFrameType]]
 
@@ -4549,6 +5003,7 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'Atan2',
     'SquareRoot',
     'Pow',
+    'MathRound',
     'I2R',
     'R2I',
     'I2S',
@@ -4573,6 +5028,8 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'SetStartLocPrio',
     'GetStartLocPrioSlot',
     'GetStartLocPrio',
+    'SetEnemyStartLocPrioCount',
+    'SetEnemyStartLocPrio',
     'SetGameTypeSupported',
     'SetMapFlag',
     'SetGamePlacement',
@@ -4707,6 +5164,7 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'GetEnumDestructable',
     'GetFilterItem',
     'GetEnumItem',
+    'ParseTags',
     'GetFilterPlayer',
     'GetEnumPlayer',
     'GetTriggeringTrigger',
@@ -4738,6 +5196,8 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'GetLeavingUnit',
     'TriggerRegisterTrackableHitEvent',
     'TriggerRegisterTrackableTrackEvent',
+    'TriggerRegisterCommandEvent',
+    'TriggerRegisterUpgradeCommandEvent',
     'GetTriggeringTrackable',
     'GetClickedButton',
     'GetClickedDialog',
@@ -5115,8 +5575,12 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'GetPlayerAlliance',
     'GetPlayerHandicap',
     'GetPlayerHandicapXP',
+    'GetPlayerHandicapReviveTime',
+    'GetPlayerHandicapDamage',
     'SetPlayerHandicap',
     'SetPlayerHandicapXP',
+    'SetPlayerHandicapReviveTime',
+    'SetPlayerHandicapDamage',
     'SetPlayerTechMaxAllowed',
     'GetPlayerTechMaxAllowed',
     'AddPlayerTechResearched',
@@ -5158,6 +5622,8 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'RemoveSaveDirectory',
     'CopySaveGame',
     'SaveGameExists',
+    'SetMaxCheckpointSaves',
+    'SaveGameCheckpoint',
     'SyncSelections',
     'SetFloatGameState',
     'GetFloatGameState',
@@ -5336,6 +5802,7 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'DisplayTimedTextFromPlayer',
     'ClearTextMessages',
     'SetDayNightModels',
+    'SetPortraitLight',
     'SetSkyModel',
     'EnableUserControl',
     'EnableUserUI',
@@ -5348,6 +5815,13 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'AddIndicator',
     'PingMinimap',
     'PingMinimapEx',
+    'CreateMinimapIconOnUnit',
+    'CreateMinimapIconAtLoc',
+    'CreateMinimapIcon',
+    'SkinManagerGetLocalPath',
+    'DestroyMinimapIcon',
+    'SetMinimapIconVisible',
+    'SetMinimapIconOrphanDestroy',
     'EnableOcclusion',
     'SetIntroShotText',
     'SetIntroShotModel',
@@ -5495,11 +5969,15 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'CameraSetupApplyWithZ',
     'CameraSetupApplyForceDuration',
     'CameraSetupApplyForceDurationWithZ',
+    'BlzCameraSetupSetLabel',
+    'BlzCameraSetupGetLabel',
     'CameraSetTargetNoise',
     'CameraSetSourceNoise',
     'CameraSetTargetNoiseEx',
     'CameraSetSourceNoiseEx',
     'CameraSetSmoothingFactor',
+    'CameraSetFocalDistance',
+    'CameraSetDepthOfFieldScale',
     'SetCineFilterTexture',
     'SetCineFilterBlendMode',
     'SetCineFilterTexMapFlags',
@@ -5513,6 +5991,7 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'SetCinematicScene',
     'EndCinematicScene',
     'ForceCinematicSubtitles',
+    'SetCinematicAudio',
     'GetCameraMargin',
     'GetCameraBoundMinX',
     'GetCameraBoundMinY',
@@ -5558,6 +6037,7 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'EndThematicMusic',
     'SetMusicVolume',
     'SetMusicPlayPosition',
+    'SetThematicMusicVolume',
     'SetThematicMusicPlayPosition',
     'SetSoundDuration',
     'GetSoundDuration',
@@ -5568,6 +6048,13 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'GetSoundIsLoading',
     'RegisterStackedSound',
     'UnregisterStackedSound',
+    'SetSoundFacialAnimationLabel',
+    'SetSoundFacialAnimationGroupLabel',
+    'SetSoundFacialAnimationSetFilepath',
+    'SetDialogueSpeakerNameKey',
+    'GetDialogueSpeakerNameKey',
+    'SetDialogueTextKey',
+    'GetDialogueTextKey',
     'AddWeatherEffect',
     'RemoveWeatherEffect',
     'EnableWeatherEffect',
@@ -5654,6 +6141,7 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'PreloadGenStart',
     'PreloadGenEnd',
     'Preloader',
+    'BlzHideCinematicPanels',
     'AutomationSetTestType',
     'AutomationTestStart',
     'AutomationTestEnd',
@@ -5749,6 +6237,7 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'BlzGetUnitAbilityCooldown',
     'BlzGetUnitAbilityCooldownRemaining',
     'BlzEndUnitAbilityCooldown',
+    'BlzStartUnitAbilityCooldown',
     'BlzGetUnitAbilityManaCost',
     'BlzSetUnitAbilityManaCost',
     'BlzGetLocalUnitZ',
@@ -5761,6 +6250,7 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'BlzSetEventAttackType',
     'BlzSetEventDamageType',
     'BlzSetEventWeaponType',
+    'BlzGetEventIsAttack',
     'RequestExtraIntegerData',
     'RequestExtraBooleanData',
     'RequestExtraStringData',
@@ -5772,6 +6262,11 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'BlzCameraSetupApplyForceDurationSmooth',
     'BlzEnableTargetIndicator',
     'BlzIsTargetIndicatorEnabled',
+    'BlzShowTerrain',
+    'BlzShowSkyBox',
+    'BlzStartRecording',
+    'BlzEndRecording',
+    'BlzShowUnitTeamGlow',
     'BlzGetOriginFrame',
     'BlzEnableUIAutoPosition',
     'BlzHideOriginFrames',
@@ -5848,6 +6343,11 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'BlzGetUnitAbilityByIndex',
     'BlzDisplayChatMessage',
     'BlzPauseUnitEx',
+    'BlzSetUnitFacingEx',
+    'CreateCommandButtonEffect',
+    'CreateUpgradeCommandButtonEffect',
+    'CreateLearnCommandButtonEffect',
+    'DestroyCommandButtonEffect',
     'BlzBitOr',
     'BlzBitAnd',
     'BlzBitXor',
@@ -5911,6 +6411,17 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'BlzSetUnitWeaponIntegerField',
     'BlzSetUnitWeaponRealField',
     'BlzSetUnitWeaponStringField',
+    'BlzGetUnitSkin',
+    'BlzGetItemSkin',
+    'BlzSetUnitSkin',
+    'BlzSetItemSkin',
+    'BlzCreateItemWithSkin',
+    'BlzCreateUnitWithSkin',
+    'BlzCreateDestructableWithSkin',
+    'BlzCreateDestructableZWithSkin',
+    'BlzCreateDeadDestructableWithSkin',
+    'BlzCreateDeadDestructableZWithSkin',
+    'BlzGetPlayerTownHallCount',
     'FALSE',
     'TRUE',
     'JASS_MAX_ARRAY_SIZE',
@@ -6448,6 +6959,11 @@ P['lib/stdlib/native/_generated/_globals.lua'] = [[return {
     'ORIGIN_FRAME_TOP_MSG',
     'ORIGIN_FRAME_PORTRAIT',
     'ORIGIN_FRAME_WORLD_FRAME',
+    'ORIGIN_FRAME_SIMPLE_UI_PARENT',
+    'ORIGIN_FRAME_PORTRAIT_HP_TEXT',
+    'ORIGIN_FRAME_PORTRAIT_MANA_TEXT',
+    'ORIGIN_FRAME_UNIT_PANEL_BUFF_BAR',
+    'ORIGIN_FRAME_UNIT_PANEL_BUFF_BAR_LABEL',
     'FRAMEPOINT_TOPLEFT',
     'FRAMEPOINT_TOP',
     'FRAMEPOINT_TOPRIGHT',
@@ -8025,6 +8541,10 @@ function Native.SquareRoot(x) end
 ---@return float
 function Native.Pow(x, power) end
 
+---@param r float
+---@return integer
+function Native.MathRound(r) end
+
 ---@param i integer
 ---@return float
 function Native.I2R(i) end
@@ -8134,6 +8654,18 @@ function Native.GetStartLocPrioSlot(startLoc, prioSlotIndex) end
 ---@param prioSlotIndex integer
 ---@return startlocprio
 function Native.GetStartLocPrio(startLoc, prioSlotIndex) end
+
+---@param startLoc integer
+---@param prioSlotCount integer
+---@return void
+function Native.SetEnemyStartLocPrioCount(startLoc, prioSlotCount) end
+
+---@param startLoc integer
+---@param prioSlotIndex integer
+---@param otherStartLocIndex integer
+---@param priority startlocprio
+---@return void
+function Native.SetEnemyStartLocPrio(startLoc, prioSlotIndex, otherStartLocIndex, priority) end
 
 ---@param gameType gametype
 ---@param value boolean
@@ -8765,6 +9297,10 @@ function Native.GetFilterItem() end
 ---@return item
 function Native.GetEnumItem() end
 
+---@param taggedString string
+---@return string
+function Native.ParseTags(taggedString) end
+
 ---@return player
 function Native.GetFilterPlayer() end
 
@@ -8899,6 +9435,17 @@ function Native.TriggerRegisterTrackableHitEvent(trigger, t) end
 ---@param t trackable
 ---@return event
 function Native.TriggerRegisterTrackableTrackEvent(trigger, t) end
+
+---@param trigger trigger
+---@param ability integer
+---@param order string
+---@return event
+function Native.TriggerRegisterCommandEvent(trigger, ability, order) end
+
+---@param trigger trigger
+---@param upgrade integer
+---@return event
+function Native.TriggerRegisterUpgradeCommandEvent(trigger, upgrade) end
 
 ---@return trackable
 function Native.GetTriggeringTrackable() end
@@ -10716,6 +11263,14 @@ function Native.GetPlayerHandicap(player) end
 function Native.GetPlayerHandicapXP(player) end
 
 ---@param player player
+---@return float
+function Native.GetPlayerHandicapReviveTime(player) end
+
+---@param player player
+---@return float
+function Native.GetPlayerHandicapDamage(player) end
+
+---@param player player
 ---@param handicap float
 ---@return void
 function Native.SetPlayerHandicap(player, handicap) end
@@ -10724,6 +11279,16 @@ function Native.SetPlayerHandicap(player, handicap) end
 ---@param handicap float
 ---@return void
 function Native.SetPlayerHandicapXP(player, handicap) end
+
+---@param player player
+---@param handicap float
+---@return void
+function Native.SetPlayerHandicapReviveTime(player, handicap) end
+
+---@param player player
+---@param handicap float
+---@return void
+function Native.SetPlayerHandicapDamage(player, handicap) end
 
 ---@param player player
 ---@param techid integer
@@ -10933,6 +11498,15 @@ function Native.CopySaveGame(sourceSaveName, destSaveName) end
 ---@param saveName string
 ---@return boolean
 function Native.SaveGameExists(saveName) end
+
+---@param maxCheckpointSaves integer
+---@return void
+function Native.SetMaxCheckpointSaves(maxCheckpointSaves) end
+
+---@param saveFileName string
+---@param showWindow boolean
+---@return void
+function Native.SaveGameCheckpoint(saveFileName, showWindow) end
 
 ---@return void
 function Native.SyncSelections() end
@@ -11991,6 +12565,10 @@ function Native.ClearTextMessages() end
 ---@return void
 function Native.SetDayNightModels(terrainDNCFile, unitDNCFile) end
 
+---@param portraitDNCFile string
+---@return void
+function Native.SetPortraitLight(portraitDNCFile) end
+
 ---@param skyModelFile string
 ---@return void
 function Native.SetSkyModel(skyModelFile) end
@@ -12054,6 +12632,52 @@ function Native.PingMinimap(x, y, duration) end
 ---@param extraEffects boolean
 ---@return void
 function Native.PingMinimapEx(x, y, duration, red, green, blue, extraEffects) end
+
+---@param unit unit
+---@param red integer
+---@param green integer
+---@param blue integer
+---@param pingPath string
+---@param fogVisibility fogstate
+---@return minimapicon
+function Native.CreateMinimapIconOnUnit(unit, red, green, blue, pingPath, fogVisibility) end
+
+---@param where location
+---@param red integer
+---@param green integer
+---@param blue integer
+---@param pingPath string
+---@param fogVisibility fogstate
+---@return minimapicon
+function Native.CreateMinimapIconAtLoc(where, red, green, blue, pingPath, fogVisibility) end
+
+---@param x float
+---@param y float
+---@param red integer
+---@param green integer
+---@param blue integer
+---@param pingPath string
+---@param fogVisibility fogstate
+---@return minimapicon
+function Native.CreateMinimapIcon(x, y, red, green, blue, pingPath, fogVisibility) end
+
+---@param key string
+---@return string
+function Native.SkinManagerGetLocalPath(key) end
+
+---@param pingId minimapicon
+---@return void
+function Native.DestroyMinimapIcon(pingId) end
+
+---@param minimapIcon minimapicon
+---@param visible boolean
+---@return void
+function Native.SetMinimapIconVisible(minimapIcon, visible) end
+
+---@param minimapIcon minimapicon
+---@param doDestroy boolean
+---@return void
+function Native.SetMinimapIconOrphanDestroy(minimapIcon, doDestroy) end
 
 ---@param flag boolean
 ---@return void
@@ -12795,6 +13419,15 @@ function Native.CameraSetupApplyForceDuration(setup, doPan, forceDuration) end
 ---@return void
 function Native.CameraSetupApplyForceDurationWithZ(setup, zDestOffset, forceDuration) end
 
+---@param setup camerasetup
+---@param label string
+---@return void
+function Native.BlzCameraSetupSetLabel(setup, label) end
+
+---@param setup camerasetup
+---@return string
+function Native.BlzCameraSetupGetLabel(setup) end
+
 ---@param mag float
 ---@param velocity float
 ---@return void
@@ -12820,6 +13453,14 @@ function Native.CameraSetSourceNoiseEx(mag, velocity, vertOnly) end
 ---@param factor float
 ---@return void
 function Native.CameraSetSmoothingFactor(factor) end
+
+---@param distance float
+---@return void
+function Native.CameraSetFocalDistance(distance) end
+
+---@param scale float
+---@return void
+function Native.CameraSetDepthOfFieldScale(scale) end
 
 ---@param filename string
 ---@return void
@@ -12887,6 +13528,10 @@ function Native.EndCinematicScene() end
 ---@param flag boolean
 ---@return void
 function Native.ForceCinematicSubtitles(flag) end
+
+---@param cinematicAudio boolean
+---@return void
+function Native.SetCinematicAudio(cinematicAudio) end
 
 ---@param margin integer
 ---@return float
@@ -13100,6 +13745,10 @@ function Native.SetMusicVolume(volume) end
 ---@return void
 function Native.SetMusicPlayPosition(millisecs) end
 
+---@param volume integer
+---@return void
+function Native.SetThematicMusicVolume(volume) end
+
 ---@param millisecs integer
 ---@return void
 function Native.SetThematicMusicPlayPosition(millisecs) end
@@ -13146,6 +13795,39 @@ function Native.RegisterStackedSound(soundHandle, byPosition, rectwidth, recthei
 ---@param rectheight float
 ---@return void
 function Native.UnregisterStackedSound(soundHandle, byPosition, rectwidth, rectheight) end
+
+---@param soundHandle sound
+---@param animationLabel string
+---@return boolean
+function Native.SetSoundFacialAnimationLabel(soundHandle, animationLabel) end
+
+---@param soundHandle sound
+---@param groupLabel string
+---@return boolean
+function Native.SetSoundFacialAnimationGroupLabel(soundHandle, groupLabel) end
+
+---@param soundHandle sound
+---@param animationSetFilepath string
+---@return boolean
+function Native.SetSoundFacialAnimationSetFilepath(soundHandle, animationSetFilepath) end
+
+---@param soundHandle sound
+---@param speakerName string
+---@return boolean
+function Native.SetDialogueSpeakerNameKey(soundHandle, speakerName) end
+
+---@param soundHandle sound
+---@return string
+function Native.GetDialogueSpeakerNameKey(soundHandle) end
+
+---@param soundHandle sound
+---@param dialogueText string
+---@return boolean
+function Native.SetDialogueTextKey(soundHandle, dialogueText) end
+
+---@param soundHandle sound
+---@return string
+function Native.GetDialogueTextKey(soundHandle) end
 
 ---@param where rect
 ---@param effectID integer
@@ -13652,6 +14334,10 @@ function Native.PreloadGenEnd(filename) end
 ---@return void
 function Native.Preloader(filename) end
 
+---@param enable boolean
+---@return void
+function Native.BlzHideCinematicPanels(enable) end
+
 ---@param testType string
 ---@return void
 function Native.AutomationSetTestType(testType) end
@@ -14114,6 +14800,12 @@ function Native.BlzGetUnitAbilityCooldownRemaining(unit, abilId) end
 function Native.BlzEndUnitAbilityCooldown(unit, abilCode) end
 
 ---@param unit unit
+---@param abilCode integer
+---@param cooldown float
+---@return void
+function Native.BlzStartUnitAbilityCooldown(unit, abilCode, cooldown) end
+
+---@param unit unit
 ---@param abilId integer
 ---@param level integer
 ---@return integer
@@ -14163,6 +14855,9 @@ function Native.BlzSetEventDamageType(damageType) end
 ---@param weaponType weapontype
 ---@return boolean
 function Native.BlzSetEventWeaponType(weaponType) end
+
+---@return boolean
+function Native.BlzGetEventIsAttack() end
 
 ---@param dataType integer
 ---@param player player
@@ -14238,6 +14933,26 @@ function Native.BlzEnableTargetIndicator(enable) end
 
 ---@return boolean
 function Native.BlzIsTargetIndicatorEnabled() end
+
+---@param show boolean
+---@return void
+function Native.BlzShowTerrain(show) end
+
+---@param show boolean
+---@return void
+function Native.BlzShowSkyBox(show) end
+
+---@param fps integer
+---@return void
+function Native.BlzStartRecording(fps) end
+
+---@return void
+function Native.BlzEndRecording() end
+
+---@param unit unit
+---@param show boolean
+---@return void
+function Native.BlzShowUnitTeamGlow(unit, show) end
 
 ---@param frameType originframetype
 ---@param index integer
@@ -14602,6 +15317,28 @@ function Native.BlzDisplayChatMessage(player, recipient, message) end
 ---@param flag boolean
 ---@return void
 function Native.BlzPauseUnitEx(unit, flag) end
+
+---@param unit unit
+---@param facingAngle float
+---@return void
+function Native.BlzSetUnitFacingEx(unit, facingAngle) end
+
+---@param abilityId integer
+---@param order string
+---@return commandbuttoneffect
+function Native.CreateCommandButtonEffect(abilityId, order) end
+
+---@param uprgade integer
+---@return commandbuttoneffect
+function Native.CreateUpgradeCommandButtonEffect(uprgade) end
+
+---@param abilityId integer
+---@return commandbuttoneffect
+function Native.CreateLearnCommandButtonEffect(abilityId) end
+
+---@param effect commandbuttoneffect
+---@return void
+function Native.DestroyCommandButtonEffect(effect) end
 
 ---@param x integer
 ---@param y integer
@@ -14989,6 +15726,86 @@ function Native.BlzSetUnitWeaponRealField(unit, field, index, value) end
 ---@param value string
 ---@return boolean
 function Native.BlzSetUnitWeaponStringField(unit, field, index, value) end
+
+---@param unit unit
+---@return integer
+function Native.BlzGetUnitSkin(unit) end
+
+---@param item item
+---@return integer
+function Native.BlzGetItemSkin(item) end
+
+---@param unit unit
+---@param skinId integer
+---@return void
+function Native.BlzSetUnitSkin(unit, skinId) end
+
+---@param item item
+---@param skinId integer
+---@return void
+function Native.BlzSetItemSkin(item, skinId) end
+
+---@param itemid integer
+---@param x float
+---@param y float
+---@param skinId integer
+---@return item
+function Native.BlzCreateItemWithSkin(itemid, x, y, skinId) end
+
+---@param id player
+---@param unitid integer
+---@param x float
+---@param y float
+---@param face float
+---@param skinId integer
+---@return unit
+function Native.BlzCreateUnitWithSkin(id, unitid, x, y, face, skinId) end
+
+---@param objectid integer
+---@param x float
+---@param y float
+---@param face float
+---@param scale float
+---@param variation integer
+---@param skinId integer
+---@return destructable
+function Native.BlzCreateDestructableWithSkin(objectid, x, y, face, scale, variation, skinId) end
+
+---@param objectid integer
+---@param x float
+---@param y float
+---@param z float
+---@param face float
+---@param scale float
+---@param variation integer
+---@param skinId integer
+---@return destructable
+function Native.BlzCreateDestructableZWithSkin(objectid, x, y, z, face, scale, variation, skinId) end
+
+---@param objectid integer
+---@param x float
+---@param y float
+---@param face float
+---@param scale float
+---@param variation integer
+---@param skinId integer
+---@return destructable
+function Native.BlzCreateDeadDestructableWithSkin(objectid, x, y, face, scale, variation, skinId) end
+
+---@param objectid integer
+---@param x float
+---@param y float
+---@param z float
+---@param face float
+---@param scale float
+---@param variation integer
+---@param skinId integer
+---@return destructable
+function Native.BlzCreateDeadDestructableZWithSkin(objectid, x, y, z, face, scale, variation, skinId) end
+
+---@param player player
+---@return integer
+function Native.BlzGetPlayerTownHallCount(player) end
 
 ---@type boolean
 Native.FALSE = nil
@@ -16600,6 +17417,21 @@ Native.ORIGIN_FRAME_PORTRAIT = nil
 
 ---@type originframetype
 Native.ORIGIN_FRAME_WORLD_FRAME = nil
+
+---@type originframetype
+Native.ORIGIN_FRAME_SIMPLE_UI_PARENT = nil
+
+---@type originframetype
+Native.ORIGIN_FRAME_PORTRAIT_HP_TEXT = nil
+
+---@type originframetype
+Native.ORIGIN_FRAME_PORTRAIT_MANA_TEXT = nil
+
+---@type originframetype
+Native.ORIGIN_FRAME_UNIT_PANEL_BUFF_BAR = nil
+
+---@type originframetype
+Native.ORIGIN_FRAME_UNIT_PANEL_BUFF_BAR_LABEL = nil
 
 ---@type framepointtype
 Native.FRAMEPOINT_TOPLEFT = nil
@@ -20688,6 +21520,26 @@ function CameraSetup:applyForceDurationWithZ(zDestOffset, forceDuration)
     return Native.CameraSetupApplyForceDurationWithZ(getUd(self), zDestOffset, forceDuration)
 end
 
+---setLabel
+---@param label string
+---@return void
+function CameraSetup:setLabel(label)
+--@debug@
+    checkobject(self, CameraSetup, 'setLabel', 'self')
+    checktype(label, 'string', 'setLabel', 1)
+--@end-debug@
+    return Native.BlzCameraSetupSetLabel(getUd(self), label)
+end
+
+---getLabel
+---@return string
+function CameraSetup:getLabel()
+--@debug@
+    checkobject(self, CameraSetup, 'getLabel', 'self')
+--@end-debug@
+    return Native.BlzCameraSetupGetLabel(getUd(self))
+end
+
 ---applyForceDurationSmooth
 ---@param doPan boolean
 ---@param forcedDuration float
@@ -20921,6 +21773,122 @@ function Destructable:createDeadZ(objectid, x, y, z, face, scale, variation)
     checktype(variation, 'integer', 'createDeadZ', 7)
 --@end-debug@
     return Destructable:fromUd(Native.CreateDeadDestructableZ(objectid, x, y, z, face, scale, variation))
+end
+
+---<static> createWithSkin
+---@overload fun(objectid: integer, vec: Vector, face: float, scale: float, variation: integer, skinId: integer): Destructable
+---@param objectid integer
+---@param x float
+---@param y float
+---@param face float
+---@param scale float
+---@param variation integer
+---@param skinId integer
+---@return Destructable
+function Destructable:createWithSkin(objectid, x, y, face, scale, variation, skinId)
+    if type(x) == 'table' then
+        face, scale, variation, skinId = y, face, scale, variation
+        x, y = table.unpack(x)
+    end
+--@debug@
+    checkclass(self, Destructable, 'createWithSkin', 'self')
+    checktype(objectid, 'integer', 'createWithSkin', 1)
+    checktype(x, 'float', 'createWithSkin', 2)
+    checktype(y, 'float', 'createWithSkin', 3)
+    checktype(face, 'float', 'createWithSkin', 4)
+    checktype(scale, 'float', 'createWithSkin', 5)
+    checktype(variation, 'integer', 'createWithSkin', 6)
+    checktype(skinId, 'integer', 'createWithSkin', 7)
+--@end-debug@
+    return Destructable:fromUd(Native.BlzCreateDestructableWithSkin(objectid, x, y, face, scale, variation, skinId))
+end
+
+---<static> createZWithSkin
+---@overload fun(objectid: integer, vec: Vector3, face: float, scale: float, variation: integer, skinId: integer): Destructable
+---@param objectid integer
+---@param x float
+---@param y float
+---@param z float
+---@param face float
+---@param scale float
+---@param variation integer
+---@param skinId integer
+---@return Destructable
+function Destructable:createZWithSkin(objectid, x, y, z, face, scale, variation, skinId)
+    if type(x) == 'table' then
+        face, scale, variation, skinId = y, z, face, scale
+        x, y, z = table.unpack(x)
+    end
+--@debug@
+    checkclass(self, Destructable, 'createZWithSkin', 'self')
+    checktype(objectid, 'integer', 'createZWithSkin', 1)
+    checktype(x, 'float', 'createZWithSkin', 2)
+    checktype(y, 'float', 'createZWithSkin', 3)
+    checktype(z, 'float', 'createZWithSkin', 4)
+    checktype(face, 'float', 'createZWithSkin', 5)
+    checktype(scale, 'float', 'createZWithSkin', 6)
+    checktype(variation, 'integer', 'createZWithSkin', 7)
+    checktype(skinId, 'integer', 'createZWithSkin', 8)
+--@end-debug@
+    return Destructable:fromUd(Native.BlzCreateDestructableZWithSkin(objectid, x, y, z, face, scale, variation, skinId))
+end
+
+---<static> createDeadWithSkin
+---@overload fun(objectid: integer, vec: Vector, face: float, scale: float, variation: integer, skinId: integer): Destructable
+---@param objectid integer
+---@param x float
+---@param y float
+---@param face float
+---@param scale float
+---@param variation integer
+---@param skinId integer
+---@return Destructable
+function Destructable:createDeadWithSkin(objectid, x, y, face, scale, variation, skinId)
+    if type(x) == 'table' then
+        face, scale, variation, skinId = y, face, scale, variation
+        x, y = table.unpack(x)
+    end
+--@debug@
+    checkclass(self, Destructable, 'createDeadWithSkin', 'self')
+    checktype(objectid, 'integer', 'createDeadWithSkin', 1)
+    checktype(x, 'float', 'createDeadWithSkin', 2)
+    checktype(y, 'float', 'createDeadWithSkin', 3)
+    checktype(face, 'float', 'createDeadWithSkin', 4)
+    checktype(scale, 'float', 'createDeadWithSkin', 5)
+    checktype(variation, 'integer', 'createDeadWithSkin', 6)
+    checktype(skinId, 'integer', 'createDeadWithSkin', 7)
+--@end-debug@
+    return Destructable:fromUd(Native.BlzCreateDeadDestructableWithSkin(objectid, x, y, face, scale, variation, skinId))
+end
+
+---<static> createDeadZWithSkin
+---@overload fun(objectid: integer, vec: Vector3, face: float, scale: float, variation: integer, skinId: integer): Destructable
+---@param objectid integer
+---@param x float
+---@param y float
+---@param z float
+---@param face float
+---@param scale float
+---@param variation integer
+---@param skinId integer
+---@return Destructable
+function Destructable:createDeadZWithSkin(objectid, x, y, z, face, scale, variation, skinId)
+    if type(x) == 'table' then
+        face, scale, variation, skinId = y, z, face, scale
+        x, y, z = table.unpack(x)
+    end
+--@debug@
+    checkclass(self, Destructable, 'createDeadZWithSkin', 'self')
+    checktype(objectid, 'integer', 'createDeadZWithSkin', 1)
+    checktype(x, 'float', 'createDeadZWithSkin', 2)
+    checktype(y, 'float', 'createDeadZWithSkin', 3)
+    checktype(z, 'float', 'createDeadZWithSkin', 4)
+    checktype(face, 'float', 'createDeadZWithSkin', 5)
+    checktype(scale, 'float', 'createDeadZWithSkin', 6)
+    checktype(variation, 'integer', 'createDeadZWithSkin', 7)
+    checktype(skinId, 'integer', 'createDeadZWithSkin', 8)
+--@end-debug@
+    return Destructable:fromUd(Native.BlzCreateDeadDestructableZWithSkin(objectid, x, y, z, face, scale, variation, skinId))
 end
 
 ---kill
@@ -25185,6 +26153,28 @@ function Item:create(itemid, x, y)
     return Item:fromUd(Native.CreateItem(itemid, x, y))
 end
 
+---<static> createWithSkin
+---@overload fun(itemid: integer, vec: Vector, skinId: integer): Item
+---@param itemid integer
+---@param x float
+---@param y float
+---@param skinId integer
+---@return Item
+function Item:createWithSkin(itemid, x, y, skinId)
+    if type(x) == 'table' then
+        skinId = y
+        x, y = table.unpack(x)
+    end
+--@debug@
+    checkclass(self, Item, 'createWithSkin', 'self')
+    checktype(itemid, 'integer', 'createWithSkin', 1)
+    checktype(x, 'float', 'createWithSkin', 2)
+    checktype(y, 'float', 'createWithSkin', 3)
+    checktype(skinId, 'integer', 'createWithSkin', 4)
+--@end-debug@
+    return Item:fromUd(Native.BlzCreateItemWithSkin(itemid, x, y, skinId))
+end
+
 ---getPlayer
 ---@return Player
 function Item:getPlayer()
@@ -25667,6 +26657,26 @@ function Item:removeAbility(abilCode)
     checktype(abilCode, 'integer', 'removeAbility', 1)
 --@end-debug@
     return Native.BlzItemRemoveAbility(getUd(self), abilCode)
+end
+
+---getSkin
+---@return integer
+function Item:getSkin()
+--@debug@
+    checkobject(self, Item, 'getSkin', 'self')
+--@end-debug@
+    return Native.BlzGetItemSkin(getUd(self))
+end
+
+---setSkin
+---@param skinId integer
+---@return void
+function Item:setSkin(skinId)
+--@debug@
+    checkobject(self, Item, 'setSkin', 'self')
+    checktype(skinId, 'integer', 'setSkin', 1)
+--@end-debug@
+    return Native.BlzSetItemSkin(getUd(self), skinId)
 end
 
 return Item]]
@@ -27022,6 +28032,24 @@ function Player:getHandicapXP()
     return Native.GetPlayerHandicapXP(getUd(self))
 end
 
+---getHandicapReviveTime
+---@return float
+function Player:getHandicapReviveTime()
+--@debug@
+    checkobject(self, Player, 'getHandicapReviveTime', 'self')
+--@end-debug@
+    return Native.GetPlayerHandicapReviveTime(getUd(self))
+end
+
+---getHandicapDamage
+---@return float
+function Player:getHandicapDamage()
+--@debug@
+    checkobject(self, Player, 'getHandicapDamage', 'self')
+--@end-debug@
+    return Native.GetPlayerHandicapDamage(getUd(self))
+end
+
 ---setHandicap
 ---@param handicap float
 ---@return void
@@ -27042,6 +28070,28 @@ function Player:setHandicapXP(handicap)
     checktype(handicap, 'float', 'setHandicapXP', 1)
 --@end-debug@
     return Native.SetPlayerHandicapXP(getUd(self), handicap)
+end
+
+---setHandicapReviveTime
+---@param handicap float
+---@return void
+function Player:setHandicapReviveTime(handicap)
+--@debug@
+    checkobject(self, Player, 'setHandicapReviveTime', 'self')
+    checktype(handicap, 'float', 'setHandicapReviveTime', 1)
+--@end-debug@
+    return Native.SetPlayerHandicapReviveTime(getUd(self), handicap)
+end
+
+---setHandicapDamage
+---@param handicap float
+---@return void
+function Player:setHandicapDamage(handicap)
+--@debug@
+    checkobject(self, Player, 'setHandicapDamage', 'self')
+    checktype(handicap, 'float', 'setHandicapDamage', 1)
+--@end-debug@
+    return Native.SetPlayerHandicapDamage(getUd(self), handicap)
 end
 
 ---setTechMaxAllowed
@@ -27469,6 +28519,15 @@ function Player:displayChatMessage(recipient, message)
     checktype(message, 'string', 'displayChatMessage', 2)
 --@end-debug@
     return Native.BlzDisplayChatMessage(getUd(self), recipient, message)
+end
+
+---getTownHallCount
+---@return integer
+function Player:getTownHallCount()
+--@debug@
+    checkobject(self, Player, 'getTownHallCount', 'self')
+--@end-debug@
+    return Native.BlzGetPlayerTownHallCount(getUd(self))
 end
 
 return Player]]
@@ -28306,6 +29365,79 @@ function Sound:unregisterStacked(byPosition, rectwidth, rectheight)
     return Native.UnregisterStackedSound(getUd(self), byPosition, rectwidth, rectheight)
 end
 
+---setFacialAnimationLabel
+---@param animationLabel string
+---@return boolean
+function Sound:setFacialAnimationLabel(animationLabel)
+--@debug@
+    checkobject(self, Sound, 'setFacialAnimationLabel', 'self')
+    checktype(animationLabel, 'string', 'setFacialAnimationLabel', 1)
+--@end-debug@
+    return Native.SetSoundFacialAnimationLabel(getUd(self), animationLabel)
+end
+
+---setFacialAnimationGroupLabel
+---@param groupLabel string
+---@return boolean
+function Sound:setFacialAnimationGroupLabel(groupLabel)
+--@debug@
+    checkobject(self, Sound, 'setFacialAnimationGroupLabel', 'self')
+    checktype(groupLabel, 'string', 'setFacialAnimationGroupLabel', 1)
+--@end-debug@
+    return Native.SetSoundFacialAnimationGroupLabel(getUd(self), groupLabel)
+end
+
+---setFacialAnimationSetFilepath
+---@param animationSetFilepath string
+---@return boolean
+function Sound:setFacialAnimationSetFilepath(animationSetFilepath)
+--@debug@
+    checkobject(self, Sound, 'setFacialAnimationSetFilepath', 'self')
+    checktype(animationSetFilepath, 'string', 'setFacialAnimationSetFilepath', 1)
+--@end-debug@
+    return Native.SetSoundFacialAnimationSetFilepath(getUd(self), animationSetFilepath)
+end
+
+---setDialogueSpeakerNameKey
+---@param speakerName string
+---@return boolean
+function Sound:setDialogueSpeakerNameKey(speakerName)
+--@debug@
+    checkobject(self, Sound, 'setDialogueSpeakerNameKey', 'self')
+    checktype(speakerName, 'string', 'setDialogueSpeakerNameKey', 1)
+--@end-debug@
+    return Native.SetDialogueSpeakerNameKey(getUd(self), speakerName)
+end
+
+---getDialogueSpeakerNameKey
+---@return string
+function Sound:getDialogueSpeakerNameKey()
+--@debug@
+    checkobject(self, Sound, 'getDialogueSpeakerNameKey', 'self')
+--@end-debug@
+    return Native.GetDialogueSpeakerNameKey(getUd(self))
+end
+
+---setDialogueTextKey
+---@param dialogueText string
+---@return boolean
+function Sound:setDialogueTextKey(dialogueText)
+--@debug@
+    checkobject(self, Sound, 'setDialogueTextKey', 'self')
+    checktype(dialogueText, 'string', 'setDialogueTextKey', 1)
+--@end-debug@
+    return Native.SetDialogueTextKey(getUd(self), dialogueText)
+end
+
+---getDialogueTextKey
+---@return string
+function Sound:getDialogueTextKey()
+--@debug@
+    checkobject(self, Sound, 'getDialogueTextKey', 'self')
+--@end-debug@
+    return Native.GetDialogueTextKey(getUd(self))
+end
+
 return Sound]]
 
 P['lib/stdlib/oop/_generated/_terraindeform.lua'] = [[local Native = require('lib.stdlib.native')
@@ -29089,6 +30221,30 @@ function Trigger:registerTrackableTrackEvent(t)
     return require('lib.stdlib.oop.event'):fromUd(Native.TriggerRegisterTrackableTrackEvent(getUd(self), getUd(t)))
 end
 
+---registerCommandEvent
+---@param ability integer
+---@param order string
+---@return Event
+function Trigger:registerCommandEvent(ability, order)
+--@debug@
+    checkobject(self, Trigger, 'registerCommandEvent', 'self')
+    checktype(ability, 'integer', 'registerCommandEvent', 1)
+    checktype(order, 'string', 'registerCommandEvent', 2)
+--@end-debug@
+    return require('lib.stdlib.oop.event'):fromUd(Native.TriggerRegisterCommandEvent(getUd(self), ability, order))
+end
+
+---registerUpgradeCommandEvent
+---@param upgrade integer
+---@return Event
+function Trigger:registerUpgradeCommandEvent(upgrade)
+--@debug@
+    checkobject(self, Trigger, 'registerUpgradeCommandEvent', 'self')
+    checktype(upgrade, 'integer', 'registerUpgradeCommandEvent', 1)
+--@end-debug@
+    return require('lib.stdlib.oop.event'):fromUd(Native.TriggerRegisterUpgradeCommandEvent(getUd(self), upgrade))
+end
+
 ---registerPlayerEvent
 ---@param player Player
 ---@param playerEvent PlayerEvent
@@ -29600,6 +30756,32 @@ function Unit:createBlightedGoldmine(id, x, y, face)
     checktype(face, 'float', 'createBlightedGoldmine', 4)
 --@end-debug@
     return Unit:fromUd(Native.CreateBlightedGoldmine(getUd(id), x, y, face))
+end
+
+---<static> createWithSkin
+---@overload fun(id: Player, unitid: integer, vec: Vector, face: float, skinId: integer): Unit
+---@param id Player
+---@param unitid integer
+---@param x float
+---@param y float
+---@param face float
+---@param skinId integer
+---@return Unit
+function Unit:createWithSkin(id, unitid, x, y, face, skinId)
+    if type(x) == 'table' then
+        face, skinId = y, face
+        x, y = table.unpack(x)
+    end
+--@debug@
+    checkclass(self, Unit, 'createWithSkin', 'self')
+    checkobject(id, require('lib.stdlib.oop.player'), 'createWithSkin', 1)
+    checktype(unitid, 'integer', 'createWithSkin', 2)
+    checktype(x, 'float', 'createWithSkin', 3)
+    checktype(y, 'float', 'createWithSkin', 4)
+    checktype(face, 'float', 'createWithSkin', 5)
+    checktype(skinId, 'integer', 'createWithSkin', 6)
+--@end-debug@
+    return Unit:fromUd(Native.BlzCreateUnitWithSkin(getUd(id), unitid, x, y, face, skinId))
 end
 
 ---kill
@@ -31629,6 +32811,25 @@ function Unit:addIndicator(red, green, blue, alpha)
     return Native.UnitAddIndicator(getUd(self), red, green, blue, alpha)
 end
 
+---createMinimapIconOn
+---@param red integer
+---@param green integer
+---@param blue integer
+---@param pingPath string
+---@param fogVisibility FogState
+---@return minimapicon
+function Unit:createMinimapIconOn(red, green, blue, pingPath, fogVisibility)
+--@debug@
+    checkobject(self, Unit, 'createMinimapIconOn', 'self')
+    checktype(red, 'integer', 'createMinimapIconOn', 1)
+    checktype(green, 'integer', 'createMinimapIconOn', 2)
+    checktype(blue, 'integer', 'createMinimapIconOn', 3)
+    checktype(pingPath, 'string', 'createMinimapIconOn', 4)
+    checkuserdata(fogVisibility, 'fogstate', 'createMinimapIconOn', 5)
+--@end-debug@
+    return Native.CreateMinimapIconOnUnit(getUd(self), red, green, blue, pingPath, fogVisibility)
+end
+
 ---setCameraTargetController
 ---@param xoffset float
 ---@param yoffset float
@@ -31976,6 +33177,19 @@ function Unit:endAbilityCooldown(abilCode)
     return Native.BlzEndUnitAbilityCooldown(getUd(self), abilCode)
 end
 
+---startAbilityCooldown
+---@param abilCode integer
+---@param cooldown float
+---@return void
+function Unit:startAbilityCooldown(abilCode, cooldown)
+--@debug@
+    checkobject(self, Unit, 'startAbilityCooldown', 'self')
+    checktype(abilCode, 'integer', 'startAbilityCooldown', 1)
+    checktype(cooldown, 'float', 'startAbilityCooldown', 2)
+--@end-debug@
+    return Native.BlzStartUnitAbilityCooldown(getUd(self), abilCode, cooldown)
+end
+
 ---getAbilityManaCost
 ---@param abilId integer
 ---@param level integer
@@ -32022,6 +33236,17 @@ function Unit:getZ()
     return Native.BlzGetUnitZ(getUd(self))
 end
 
+---showTeamGlow
+---@param show boolean
+---@return void
+function Unit:showTeamGlow(show)
+--@debug@
+    checkobject(self, Unit, 'showTeamGlow', 'self')
+    checktype(show, 'boolean', 'showTeamGlow', 1)
+--@end-debug@
+    return Native.BlzShowUnitTeamGlow(getUd(self), show)
+end
+
 ---getAbility
 ---@param abilId integer
 ---@return Ability
@@ -32053,6 +33278,17 @@ function Unit:pauseEx(flag)
     checktype(flag, 'boolean', 'pauseEx', 1)
 --@end-debug@
     return Native.BlzPauseUnitEx(getUd(self), flag)
+end
+
+---setFacingEx
+---@param facingAngle float
+---@return void
+function Unit:setFacingEx(facingAngle)
+--@debug@
+    checkobject(self, Unit, 'setFacingEx', 'self')
+    checktype(facingAngle, 'float', 'setFacingEx', 1)
+--@end-debug@
+    return Native.BlzSetUnitFacingEx(getUd(self), facingAngle)
 end
 
 ---getBooleanField
@@ -32261,6 +33497,26 @@ function Unit:setWeaponStringField(field, index, value)
     checktype(value, 'string', 'setWeaponStringField', 3)
 --@end-debug@
     return Native.BlzSetUnitWeaponStringField(getUd(self), field, index, value)
+end
+
+---getSkin
+---@return integer
+function Unit:getSkin()
+--@debug@
+    checkobject(self, Unit, 'getSkin', 'self')
+--@end-debug@
+    return Native.BlzGetUnitSkin(getUd(self))
+end
+
+---setSkin
+---@param skinId integer
+---@return void
+function Unit:setSkin(skinId)
+--@debug@
+    checkobject(self, Unit, 'setSkin', 'self')
+    checktype(skinId, 'integer', 'setSkin', 1)
+--@end-debug@
+    return Native.BlzSetUnitSkin(getUd(self), skinId)
 end
 
 return Unit]]
@@ -36432,28 +37688,18 @@ P['main.lua'] = [=[--require('utils')
 --require('ability/ability_base')
 --require('ui/ui_manager')
 --require('player')
+require('lib.init')
+require('core.MKCore')
 
-require('core.init')
-local UnitBase = require('core.hero.hero_base')
+print("booting...")
+MKCore:boot()
+print("boot finish...")
+
+require('biz.hero.hero')
 require('biz.ability.ability1')
 require('biz.ability.ability2')
-require('biz.hero')
-
-local PhysicsSystem = require("core.physics")
-
-
-function EnumUnitInMap()
-    local _existsUnitGroup = Group:create()
-    _existsUnitGroup:enumUnitsInRect(__MapRect,
-    function() 
-        return true 
-    end)
-    local _units = _existsUnitGroup:getUnits()
-    for i = 1,#_units do
-        local unit = _units[i]
-        onUnitEnterMap(unit)        
-    end
-end
+require('biz.ability.ability3')
+require('biz.ability.ability4')
 
 -- function UnitBase:onEnterMap()
             
@@ -36468,22 +37714,19 @@ end
 --     self.firstEnter = true
 -- end
 
-_Triggers.AnyUnitEnterTrig:addAction(function()
-    PhysicsSystem.instance.unitGroup:addUnit(Event:getEnteringUnit())
-end)
+local main  = MKCore.UnitSys:createUnit(MainHero,Player:get(0),Native.GetRectCenterX(gg_rct_RebornRect),Native.GetRectCenterY(gg_rct_RebornRect),0)
+
+print(Native.BlzLoadTOCFile([[war3mapimported\UI\ui.toc]]))    
 
 
-function onMapInit()
-    print("Init")
-    PhysicsSystem:new():init()
-    UnitBase:createUnit(_Wizzard,Player:get(0))
-    print(Native.BlzLoadTOCFile([[war3mapimported\UI\ui.toc]]))    
-end
+Timer:create():start(2,function()
+    ---@type UnitBase
+    local unit =  UnitBase:fromUd(udg_enemy)    
+    --unit:issuePointOrder(Order.curse,main:getX(),main:getY())
+end)]=]
 
-
-onMapInit()]=]
-
-P['origwar3map.lua'] = [[gg_rct_RebornRect = nil
+P['origwar3map.lua'] = [[udg_enemy = nil
+gg_rct_RebornRect = nil
 gg_cam_HunterCam = nil
 gg_cam_SoldierCam = nil
 gg_cam_WizardCam = nil
@@ -36497,6 +37740,7 @@ gg_snd_AchievementEarned = nil
 gg_snd_Hint = nil
 gg_snd_Joe_Henson_Alexis_Smith___Assassin_s_Creed = ""
 gg_trg_Init = nil
+gg_unit_H002_0006 = nil
 function InitGlobals()
 end
 
@@ -36523,7 +37767,25 @@ function CreateUnitsForPlayer1()
     local unitID
     local t
     local life
-    u = BlzCreateUnitWithSkin(p, FourCC("H002"), -193.6, -4485.6, 14.390, FourCC("H002"))
+    gg_unit_H002_0006 = BlzCreateUnitWithSkin(p, FourCC("H002"), 887.0, -4896.9, 240.783, FourCC("H002"))
+end
+
+function CreateNeutralHostile()
+    local p = Player(PLAYER_NEUTRAL_AGGRESSIVE)
+    local u
+    local unitID
+    local t
+    local life
+    u = BlzCreateUnitWithSkin(p, FourCC("e003"), 312.8, -3875.2, -15.057, FourCC("e003"))
+    u = BlzCreateUnitWithSkin(p, FourCC("e007"), 98.6, -4401.3, 200.909, FourCC("e007"))
+    u = BlzCreateUnitWithSkin(p, FourCC("e003"), -513.1, -4215.9, -36.969, FourCC("e003"))
+    u = BlzCreateUnitWithSkin(p, FourCC("e003"), -658.5, -4630.6, 13.901, FourCC("e003"))
+    u = BlzCreateUnitWithSkin(p, FourCC("e003"), -429.6, -4031.1, -66.097, FourCC("e003"))
+    u = BlzCreateUnitWithSkin(p, FourCC("e003"), -706.3, -5147.2, -33.293, FourCC("e003"))
+    u = BlzCreateUnitWithSkin(p, FourCC("e003"), -253.5, -3912.9, -86.162, FourCC("e003"))
+    u = BlzCreateUnitWithSkin(p, FourCC("e003"), -712.1, -4842.1, 32.798, FourCC("e003"))
+    u = BlzCreateUnitWithSkin(p, FourCC("e003"), -54.7, -3786.4, 257.847, FourCC("e003"))
+    u = BlzCreateUnitWithSkin(p, FourCC("e007"), 151.4, -4182.7, 222.829, FourCC("e007"))
 end
 
 function CreatePlayerBuildings()
@@ -36535,6 +37797,7 @@ end
 
 function CreateAllUnits()
     CreatePlayerBuildings()
+    CreateNeutralHostile()
     CreatePlayerUnits()
 end
 
@@ -36638,7 +37901,8 @@ function CreateCameras()
 end
 
 function Trig_Init_Actions()
-    SetMapMusicIndexedBJ(gg_snd_Joe_Henson_Alexis_Smith___Assassin_s_Creed, 0)
+    SetMapMusicIndexedBJ(gg_snd_Marcin_Przyby__owicz___Breaking_In01, 0)
+    udg_enemy = gg_unit_H002_0006
 end
 
 function InitTrig_Init()
@@ -36688,12 +37952,10 @@ function InitCustomTeams()
 end
 
 function InitAllyPriorities()
-    SetStartLocPrioCount(0, 2)
+    SetStartLocPrioCount(0, 1)
     SetStartLocPrio(0, 0, 1, MAP_LOC_PRIO_HIGH)
-    SetStartLocPrio(0, 1, 2, MAP_LOC_PRIO_HIGH)
-    SetStartLocPrioCount(1, 2)
+    SetStartLocPrioCount(1, 1)
     SetStartLocPrio(1, 0, 0, MAP_LOC_PRIO_HIGH)
-    SetStartLocPrio(1, 1, 2, MAP_LOC_PRIO_HIGH)
     SetStartLocPrioCount(2, 2)
     SetStartLocPrio(2, 0, 0, MAP_LOC_PRIO_HIGH)
     SetStartLocPrio(2, 1, 1, MAP_LOC_PRIO_HIGH)
@@ -36727,9 +37989,9 @@ function config()
     SetPlayers(4)
     SetTeams(4)
     SetGamePlacement(MAP_PLACEMENT_TEAMS_TOGETHER)
-    DefineStartLocation(0, -384.0, -4544.0)
-    DefineStartLocation(1, -384.0, -4544.0)
-    DefineStartLocation(2, -384.0, -4544.0)
+    DefineStartLocation(0, 640.0, -5120.0)
+    DefineStartLocation(1, 640.0, -5120.0)
+    DefineStartLocation(2, 640.0, -5056.0)
     DefineStartLocation(3, -1344.0, -768.0)
     InitCustomPlayerSlots()
     InitCustomTeams()

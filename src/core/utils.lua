@@ -1,4 +1,3 @@
-require('lib.init')
 
 function ToStr(id)
     return ('>I4'):pack(id)
