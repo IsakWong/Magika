@@ -1,6 +1,7 @@
 
 
 local UnitBaseType = require('core.unit.unit_type')
+local AbilityType = require('core.ability.ability_type')
 require('core.unit.unit_base')
 require('core.unit.unit_ext')
 
@@ -22,28 +23,29 @@ function UnitSystem:init()
         return true
     end
     )
-
     local UnitBaseType = require('core.unit.unit_type')
 
     tmpGroup:forEach(function(u)
-        local unit = UnitBase:fromUd(getUd(u))
+        local unit = Unit:fromUd(getUd(u))
         self:registerUnit(unit)     
     end)
 end
 
----@return UnitBaseType
+---@return UnitType
 function UnitSystem:registerUnitType(typeName)
     local id = FourCC(typeName)
     local key = ToStr(id)
-    local type = UnitBaseType:create(typeName)
+    local type = UnitType:create(typeName)
     self.unitTypes[key] = type
     return type
 end
 
----@param unit UnitBase
+---@param unit Unit
 function UnitSystem:registerUnit(unit)
     local UnitBaseType = require('core.unit.unit_type')
     local unitType = UnitBaseType:fromUd(unit:getTypeId())
+
+    
     unit.unitType = unitType
     if unitType.defaultPhysics ~= nil then
         MKCore.PhySys:registerUnit(unit)
@@ -58,12 +60,12 @@ function UnitSystem:registerUnit(unit)
 end
 
 ---@param unitType UnitType
----@return UnitBase
+---@return Unit
 function UnitSystem:createUnit(unitType,player,x,y,angle)
 
     local rect = Rect:fromUd(gg_rct_RebornRect)    
-    ---@type UnitBase
-    local unit = UnitBase:fromUd(Native.CreateUnit(getUd(player), getUd(unitType), x, y, angle))
+    ---@type Unit
+    local unit = Unit:fromUd(Native.CreateUnit(getUd(player), getUd(unitType), x, y, angle))
     
     self:registerUnit(unit)
     return unit

@@ -1,1 +1,0 @@
-XCOPY ..\.build\war3map.lua  ..\map.w3m\war3map.lua /y

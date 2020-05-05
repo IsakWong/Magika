@@ -14,6 +14,22 @@ function Group:enumEnemyUnits(player,x,y,radius)
     end)
     return self
 end
+function Group:enumPhysicsUnit(x,y,radius)
+    self:enumUnitsInRange(x,y,radius,function (u)      
+        if u.physicsState == nil then
+            return false
+        end          
+        --幻象
+        if u:isType(UnitType.Structure) then
+            return false
+        end        
+        if u:isDead() then 
+            return false
+        end
+        return true
+    end)
+    return self
+end
 
 function math.smoothDamp(current, target, currentVelocity, smoothTime, maxSpeed, deltaTime)
     smoothTime = math.max(0.0001, smoothTime);

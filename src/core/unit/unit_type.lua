@@ -3,10 +3,10 @@ local PhysicsState = require('core.physics.physics_state')
 ---@class UnitBaseType
 ---@field defaultPhysics PhysicsState
 ---@field canSelect boolean
----@field onBlockOther fun(unit:UnitBase,other:UnitBase):void
----@field onOverlapOther fun(unit:UnitBase,other:UnitBase):void
+---@field onBlockOther fun(unit:Unit,other:Unit):void
+---@field onOverlapOther fun(unit:Unit,other:Unit):void
 ---
----@type UnitBaseType
+---@type UnitType
 local UnitBaseType = class('UnitBaseType',Agent)
 
 function UnitBaseType:create(typeName)

@@ -16,7 +16,7 @@ require('biz.ability.ability2')
 require('biz.ability.ability3')
 require('biz.ability.ability4')
 
--- function UnitBase:onEnterMap()
+-- function Unit:onEnterMap()
             
 --     if self:getOwner():getController() ~= MapControl.User then
 --         return
@@ -35,7 +35,7 @@ print(Native.BlzLoadTOCFile([[war3mapimported\UI\ui.toc]]))
 
 
 Timer:create():start(2,function()
-    ---@type UnitBase
-    local unit =  UnitBase:fromUd(udg_enemy)    
+    ---@type Unit
+    local unit =  Unit:fromUd(udg_enemy)    
     --unit:issuePointOrder(Order.curse,main:getX(),main:getY())
 end)

@@ -37,20 +37,20 @@ end
 
 ---@class AbilityEvent
 ---@field owningPlayer Player
----@field triggerUnit UnitBase
+---@field triggerUnit Unit
 ---@field triggerX number
 ---@field triggerY number
 ---@field spellTargetX number
 ---@field spellTargetY number
----@field spellTarget UnitBase
+---@field spellTarget Unit
 ---@field spellRad number
 ---
 ---@retun AbilityEvent
 function AbilityType:prepareEvent()
     ---@type AbilityEvent
     local event = {}
-    ---@type UnitBase
-    local triggerUnit = UnitBase:fromUd(getUd(Event:getTriggerUnit()))
+    ---@type Unit
+    local triggerUnit = Unit:fromUd(getUd(Event:getTriggerUnit()))
     event.triggerUnit = triggerUnit
     local sepllX = 0
     local sepllY = 0 

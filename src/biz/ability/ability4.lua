@@ -9,7 +9,7 @@ abilityType2.onSpellEffect = function(event)
 
     local group = Group:create()
     group:enumEnemyUnits(event.owningPlayer,event.spellTargetX,event.spellTargetY,150)
-    ---@type UnitBase
+    ---@type Unit
     local select = nil
     
     group:forEach(function(unit)
@@ -37,8 +37,8 @@ abilityType2.onSpellEffect = function(event)
             end)
         else
             select:addAbility(FourCC('Arav'))
-            select:setFlyHeight(height,9999)
             select:removeAbility(FourCC('Arav'))
+            select:setFlyHeight(height,9999)
             height = height + 500 * 0.03
             print(height)
 
