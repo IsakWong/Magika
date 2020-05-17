@@ -86,16 +86,18 @@ function PhysicsSystem:Physical(unit)
 
 end
 
+---@param u1 Unit
+---@param u2 Unit
 function PhysicsSystem:swapForce(u1,u2)
-    local tx = u1.physicsState.forecX
-    local ty = u1.physicsState.forecY
-    local tz = u1.physicsState.forecZ
-    u1.physicsState.forecX = u2.physicsState.forecX
-    u1.physicsState.forecY = u2.physicsState.forecY
-    u1.physicsState.forecZ = u2.physicsState.forecZ
-    u2.physicsState.forecX = tx
-    u2.physicsState.forecY = ty
-    u2.physicsState.forecZ = tz
+    local tx = u1.physicsState.forceX
+    local ty = u1.physicsState.forceY
+    local tz = u1.physicsState.forceZ
+    u1.physicsState.forceX = u2.physicsState.forceX
+    u1.physicsState.forceY = u2.physicsState.forceY
+    u1.physicsState.forceZ = u2.physicsState.forceZ
+    u2.physicsState.forceX = tx
+    u2.physicsState.forceY = ty
+    u2.physicsState.forceZ = tz
 end
 
 function PhysicsSystem:moveUnit(unit)
@@ -107,6 +109,7 @@ function PhysicsSystem:UnitLoopCallback(unit)
         return
     end
     self.tmpGroup:clear()
+
     local phyState = unit.physicsState
     if phyState == nil then
         return 
@@ -115,35 +118,50 @@ function PhysicsSystem:UnitLoopCallback(unit)
 
     local x = unit:getX()
     local y = unit:getY()
+    local z = unit:getFlyHeight()
+    if z > 10 and phyState.ignoreGravity == false then
+        z  = z - 300 * 0.03
+        if z < 0 then
+            z = 0
+        end
+        unit:setFlyHeight(z,0)
+    end
     
-    self:UnitMove(unit)
-
-
-
+    
+    if unit.collisioned == false then
+        self.tmpGroup:enumPhysicsUnit(x,y,phyState.radius + 50)
+        self.tmpGroup:forEach(function(other)
+            if other == unit then
+                return
+            end
+            if unit.physicsState.colType == CollisionType.Block and other.physicsState.colType == CollisionType.Block then
+                if other.collisioned == false then
+                    unit.collisioned = true
+                    other.collisioned = true
+                    
+                    self:swapForce(unit,other)
+                end            
+            end
+            if unit:isAlive() then
+                unit.unitType.onBlockOther(unit,other)
+                other.unitType.onBlockOther(other,unit)
+            end
+        end)
+    end
     --- Physical
-    self.tmpGroup:enumPhysicsUnit(x,y,phyState.radius + 100)
-    self.tmpGroup:forEach(function(other)
-        if unit.physicsState.colType == CollisionType.Block and other.physicsState.colType == CollisionType.Block then
-            if other.collisioned == false then
-                unit.collisioned = true
-                self:swapForce(unit,other) 
-            end            
-        end
-        if unit:isAlive() then
-            unit.unitType.onBlockOther(unit,other)
-            other.unitType.onBlockOther(other,unit)
-        end
-    end)
+    if unit:getTypeId() == FourCC('H002') then
+    end
+   
 
 
     --- Move
     if math.abs(phyState.forceX) > 0 or math.abs(phyState.forceY) > 0 then        
-        local forecX = phyState.forceX
+        local forceX = phyState.forceX
         local forecY = phyState.forceY
-        local rad = math.atan(forecY,forecX)
+        local rad = math.atan(forecY,forceX)
         local dampX = phyState.dampX * 0.03 * math.cos(rad + 3.14)
         local dampY = phyState.dampY * 0.03 * math.sin(rad + 3.14)
-        local speed = forecX * forecX  + forecY * forecY
+        local speed = forceX * forceX  + forecY * forecY
         speed = math.sqrt(speed)
         if phyState.forceX ~= 0 then
             if phyState.forceX > 0 then

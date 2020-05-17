@@ -6,7 +6,13 @@ local AbilityBarrageType = MKCore.UnitSys:registerUnitType('e002')
 AbilityBarrageType.defaultPhysics.phyType = PhysicsType.Dynamic
 AbilityBarrageType.canSelect = false
 
+---@param unit Unit
+---@param other Unit
 AbilityBarrageType.onBlockOther =  function(unit,other)
+    if not unit:isEnemy(other:getOwner()) then
+        return
+    end
+    
     unit:kill()
     unit:damageUnitSimple(other,5)
     if other.physicsState.phyType == PhysicsType.Dynamic then

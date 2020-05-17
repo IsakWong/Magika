@@ -50,13 +50,13 @@ function AbilityType:prepareEvent()
     ---@type AbilityEvent
     local event = {}
     ---@type Unit
-    local triggerUnit = Unit:fromUd(getUd(Event:getTriggerUnit()))
+    local triggerUnit = Event:getTriggerUnit()
     event.triggerUnit = triggerUnit
     local sepllX = 0
     local sepllY = 0 
     local triggerX = triggerUnit:getX()
     local triggerY = triggerUnit:getY()    
-    event.spellTarget = UnitBase:fromUd(getUd(Event:getSpellTargetUnit()))
+    event.spellTarget = Event:getSpellTargetUnit()
     if event.spellTarget == nil then
         sepllX = Event:getSpellTargetX()
         sepllY =  Event:getSpellTargetY()

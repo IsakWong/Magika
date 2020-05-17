@@ -8,6 +8,7 @@
 ---@field dampY number
 ---@field dampZ number
 ---@field radius number
+---@field ignoreGravity boolean
 ---@type PhysicsState
 local PhysicsState = class("PhysicsState")
 
@@ -18,8 +19,8 @@ function PhysicsState:constructor()
     self.forceX = 0
     self.forceY = 0
     self.forceZ = 0
-    self.dampX = 0
-    self.dampY = 0
+    self.dampX = 100
+    self.dampY = 100
     self.dampZ = 0
     self.radius = 50
 end

@@ -31,11 +31,11 @@ function UnitSystem:init()
     end)
 end
 
----@return UnitType
+---@return UnitBaseType
 function UnitSystem:registerUnitType(typeName)
     local id = FourCC(typeName)
     local key = ToStr(id)
-    local type = UnitType:create(typeName)
+    local type = UnitBaseType:create(typeName)
     self.unitTypes[key] = type
     return type
 end
@@ -50,6 +50,11 @@ function UnitSystem:registerUnit(unit)
     if unitType.defaultPhysics ~= nil then
         MKCore.PhySys:registerUnit(unit)
     end
+    
+    UnitAddAbilityBJ(FourCC("Amrf"), getUd(unit))
+    UnitRemoveAbilityBJ(FourCC("Amrf"), getUd(unit))
+
+    unit:disableAbility(FourCC("A008"),false,true)
     if unitType.canSelect == false then
         unit:addAbility(FourCC('Aloc'))        
         unit:setPosition(unit:getX(),unit:getY())
